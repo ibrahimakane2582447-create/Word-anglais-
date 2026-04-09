@@ -57,23 +57,48 @@ export default function App() {
   const [quizWord, setQuizWord] = useState<WordEntry | null>(null);
   const [quizOptions, setQuizOptions] = useState<string[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [correctAnswer, setCorrectAnswer] = useState<string>('');
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [streak, setStreak] = useState(0); // Compteur de bonnes réponses consécutives
 
   const generateQuizQuestion = () => {
-    // Prendre un mot aléatoire parmi les vrais mots pour éviter les mots factices générés
-    const realWordsCount = Math.min(65, vocabularyData.length);
-    const randomWord = vocabularyData[Math.floor(Math.random() * realWordsCount)];
+    // Tous les mots sont maintenant de vrais mots sans chiffres
+    const randomWord = vocabularyData[Math.floor(Math.random() * vocabularyData.length)];
     setQuizWord(randomWord);
     
-    const wrongAnswers = new Set<string>();
-    while(wrongAnswers.size < 3) {
-      const wrong = vocabularyData[Math.floor(Math.random() * realWordsCount)].french;
-      if (wrong !== randomWord.french) wrongAnswers.add(wrong);
+    // 25% de chance que ce soit une question "piège" (la réponse n'est pas là)
+    const isTrickQuestion = Math.random() < 0.25;
+    const TRICK_ANSWER = "Aucune de ces réponses";
+
+    let options: string[] = [];
+    let correct = '';
+
+    if (isTrickQuestion) {
+      // On met 3 mauvaises réponses
+      const wrongAnswers = new Set<string>();
+      while(wrongAnswers.size < 3) {
+        const wrong = vocabularyData[Math.floor(Math.random() * vocabularyData.length)].french;
+        if (wrong !== randomWord.french) wrongAnswers.add(wrong);
+      }
+      options = Array.from(wrongAnswers);
+      options.sort(() => Math.random() - 0.5);
+      options.push(TRICK_ANSWER); // Toujours à la fin
+      correct = TRICK_ANSWER;
+    } else {
+      // On met 2 mauvaises réponses + la bonne réponse
+      const wrongAnswers = new Set<string>();
+      while(wrongAnswers.size < 2) {
+        const wrong = vocabularyData[Math.floor(Math.random() * vocabularyData.length)].french;
+        if (wrong !== randomWord.french) wrongAnswers.add(wrong);
+      }
+      options = [randomWord.french, ...Array.from(wrongAnswers)];
+      options.sort(() => Math.random() - 0.5);
+      options.push(TRICK_ANSWER); // Toujours à la fin
+      correct = randomWord.french;
     }
-    
-    const allOptions = [randomWord.french, ...Array.from(wrongAnswers)].sort(() => Math.random() - 0.5);
-    setQuizOptions(allOptions);
+
+    setQuizOptions(options);
+    setCorrectAnswer(correct);
     setSelectedAnswer(null);
   };
 
@@ -108,7 +133,7 @@ export default function App() {
     if (selectedAnswer) return; // Déjà répondu
     setSelectedAnswer(answer);
     
-    if (answer === quizWord?.french) {
+    if (answer === correctAnswer) {
       const newStreak = streak + 1;
       setStreak(newStreak);
       setScore(s => ({ ...s, correct: s.correct + 1, total: s.total + 1 }));
@@ -188,7 +213,7 @@ export default function App() {
               <input
                 type="text"
                 className="block w-full pl-10 pr-3 py-3 border-none rounded-xl leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-300 sm:text-sm shadow-inner"
-                placeholder="Rechercher parmi 5000 mots..."
+                placeholder="Rechercher parmi 1000 mots..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onFocus={(e) => e.target.setAttribute('readonly', 'readonly')}
@@ -265,7 +290,7 @@ export default function App() {
                   
                   if (!selectedAnswer) {
                     btnClass += "border-gray-100 bg-gray-50 hover:bg-gray-100 text-gray-700 active:scale-95";
-                  } else if (option === quizWord.french) {
+                  } else if (option === correctAnswer) {
                     btnClass += "border-green-500 bg-green-50 text-green-700";
                   } else if (option === selectedAnswer) {
                     btnClass += "border-red-500 bg-red-50 text-red-700";
@@ -281,9 +306,9 @@ export default function App() {
                       className={btnClass}
                     >
                       <div className="flex justify-between items-center">
-                        <span>{option}</span>
-                        {selectedAnswer && option === quizWord.french && <CheckCircle2 className="w-5 h-5 text-green-500" />}
-                        {selectedAnswer === option && option !== quizWord.french && <XCircle className="w-5 h-5 text-red-500" />}
+                        <span className={option === "Aucune de ces réponses" ? "italic" : ""}>{option}</span>
+                        {selectedAnswer && option === correctAnswer && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+                        {selectedAnswer === option && option !== correctAnswer && <XCircle className="w-5 h-5 text-red-500" />}
                       </div>
                     </button>
                   );
