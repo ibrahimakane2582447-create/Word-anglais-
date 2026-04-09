@@ -62,8 +62,9 @@ export default function App() {
   const [streak, setStreak] = useState(0); // Compteur de bonnes réponses consécutives
 
   const generateQuizQuestion = () => {
-    // Tous les mots sont maintenant de vrais mots sans chiffres
-    const randomWord = vocabularyData[Math.floor(Math.random() * vocabularyData.length)];
+    // Filtrer pour ne garder que les mots simples (pas les combinaisons générées) pour rendre le quiz plus facile
+    const simpleWords = vocabularyData.filter(w => w.type !== 'Nom composé');
+    const randomWord = simpleWords[Math.floor(Math.random() * simpleWords.length)];
     setQuizWord(randomWord);
     
     // 25% de chance que ce soit une question "piège" (la réponse n'est pas là)
@@ -77,7 +78,7 @@ export default function App() {
       // On met 3 mauvaises réponses
       const wrongAnswers = new Set<string>();
       while(wrongAnswers.size < 3) {
-        const wrong = vocabularyData[Math.floor(Math.random() * vocabularyData.length)].french;
+        const wrong = simpleWords[Math.floor(Math.random() * simpleWords.length)].french;
         if (wrong !== randomWord.french) wrongAnswers.add(wrong);
       }
       options = Array.from(wrongAnswers);
@@ -88,7 +89,7 @@ export default function App() {
       // On met 2 mauvaises réponses + la bonne réponse
       const wrongAnswers = new Set<string>();
       while(wrongAnswers.size < 2) {
-        const wrong = vocabularyData[Math.floor(Math.random() * vocabularyData.length)].french;
+        const wrong = simpleWords[Math.floor(Math.random() * simpleWords.length)].french;
         if (wrong !== randomWord.french) wrongAnswers.add(wrong);
       }
       options = [randomWord.french, ...Array.from(wrongAnswers)];
