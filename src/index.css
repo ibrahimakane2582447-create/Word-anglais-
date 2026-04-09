@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  /* Prevent text selection and copy/paste */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  
+  /* Prevent pull-to-refresh and pinch-zoom on mobile */
+  touch-action: pan-y;
+  
+  /* Native app feel background */
+  background-color: #f3f4f6;
+}
+
+/* Allow scrolling in specific containers if needed, but hide scrollbar for native feel */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
