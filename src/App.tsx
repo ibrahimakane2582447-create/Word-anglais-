@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Search, BookOpen, Heart, Gamepad2, List, CheckCircle2, XCircle, Flame, PlusCircle, Save } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { vocabularyData, WordEntry, sentenceData, SentenceEntry } from './data';
@@ -8,7 +9,15 @@ type QuizMode = 'mots' | 'phrases';
 type PhraseGameType = 'translation' | 'puzzle';
 
 export default function App() {
+  const [showWelcome, setShowWelcome] = useState(true);
   const [currentTab, setCurrentTab] = useState<Tab>('dict');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowWelcome(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
   const [quizMode, setQuizMode] = useState<QuizMode>('mots');
   const [phraseGameType, setPhraseGameType] = useState<PhraseGameType>('translation');
   const [searchTerm, setSearchTerm] = useState('');
@@ -247,6 +256,61 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-transparent flex flex-col">
+      <AnimatePresence>
+        {showWelcome && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-indigo-600 text-white"
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ 
+                scale: 1, 
+                y: [0, -15, 0],
+              }}
+              transition={{ 
+                scale: { duration: 0.5 },
+                y: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+              }}
+              className="text-center p-8 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl"
+            >
+              <div className="text-6xl mb-4 flex justify-center gap-4">
+                <motion.span
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
+                >
+                  🏫
+                </motion.span>
+                <motion.span
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  📚
+                </motion.span>
+              </div>
+              <h2 className="text-4xl font-black mb-2 tracking-tight">Bienvenue</h2>
+              <p className="text-2xl font-bold opacity-90">Ibrahima Kane</p>
+              <div className="mt-6 flex justify-center">
+                <motion.div
+                  animate={{ scaleX: [0, 1] }}
+                  transition={{ duration: 3 }}
+                  className="h-1 w-48 bg-white/30 rounded-full overflow-hidden"
+                >
+                  <motion.div 
+                    className="h-full bg-white"
+                    initial={{ width: "0%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 3 }}
+                  />
+                </motion.div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="sticky top-0 z-20 bg-indigo-600 text-white shadow-md pb-4 rounded-b-2xl">
         <div className="px-4 pt-12 pb-2 flex items-center justify-center">
