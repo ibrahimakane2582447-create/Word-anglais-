@@ -40,7 +40,7 @@ app.post("/api/chat", async (req, res) => {
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
       config: {
-        systemInstruction: `Tu es IBKane AI, un assistant éducatif expert en Français et en Anglais. 
+        systemInstruction: `Tu es IBKane IA, un assistant éducatif expert en Français et en Anglais. 
         Ton but est d'aider l'utilisateur à apprendre ces deux langues. 
         Réponds de manière amicale, encourageante et précise. 
         Si l'utilisateur pose des questions sur l'éducation, les langues ou demande des dialogues de pratique, sois très détaillé.

@@ -59,7 +59,7 @@ export default function App() {
     const saved = localStorage.getItem('vocab-chat');
     return saved ? JSON.parse(saved) : [{
       role: 'model',
-      parts: [{ text: "Bonjour ! Je suis IBKane AI. Comment puis-je t'aider dans ton apprentissage de l'anglais ou du français aujourd'hui ?" }]
+      parts: [{ text: "Bonjour ! Je suis IBKane IA. Comment puis-je t'aider dans ton apprentissage de l'anglais ou du français aujourd'hui ?" }]
     }];
   });
   const [chatInput, setChatInput] = useState('');
@@ -218,16 +218,30 @@ export default function App() {
       const isCorrectAnswerHidden = Math.random() < 0.25;
       const wrongSentences = new Set<string>();
       const currentSentenceFr = randomSentence.french;
+      const normalizeFunc = (s: string) => s.toLowerCase().replace(/[.!?]$/, '').trim();
+      const currentSentenceFrNorm = normalizeFunc(currentSentenceFr);
       
-      // Stratégie de distracteurs plus intelligents
-      const templates = ["J'aime", "Peux-tu", "Je vois", "Où est", "Je veux"];
-      const matchedTemplate = templates.find(t => currentSentenceFr.startsWith(t));
+      // 1. Swap gendered articles if they exist at the start
+      let genderDistractor = currentSentenceFr;
+      if (genderDistractor.startsWith("Le ")) genderDistractor = genderDistractor.replace("Le ", "La ");
+      else if (genderDistractor.startsWith("La ")) genderDistractor = genderDistractor.replace("La ", "Le ");
+      else if (genderDistractor.startsWith("Un ")) genderDistractor = genderDistractor.replace("Un ", "Une ");
+      else if (genderDistractor.startsWith("Une ")) genderDistractor = genderDistractor.replace("Une ", "Un ");
       
-      // Compléter avec du hasard ou templates
-      while(wrongSentences.size < 4) {
+      if (normalizeFunc(genderDistractor) !== currentSentenceFrNorm) {
+        wrongSentences.add(genderDistractor);
+      }
+
+      // 2. Distracteurs basés sur les mêmes structures
+      const prefixes = ["J'aime", "Peux-tu", "Je vois", "Le", "La", "L'", "Un", "Une", "Où est", "Je veux"];
+      const matchedPrefix = prefixes.find(p => currentSentenceFr.startsWith(p));
+      
+      let attempts = 0;
+      while(wrongSentences.size < 4 && attempts < 50) {
+        attempts++;
         let wrong = "";
-        if (matchedTemplate && Math.random() > 0.5) {
-          const others = sentenceData.filter(s => s.french.startsWith(matchedTemplate) && s.french !== currentSentenceFr);
+        if (matchedPrefix && Math.random() > 0.4) {
+          const others = sentenceData.filter(s => s.french.startsWith(matchedPrefix) && normalizeFunc(s.french) !== currentSentenceFrNorm);
           if (others.length > 0) {
             wrong = others[Math.floor(Math.random() * others.length)].french;
           }
@@ -237,7 +251,7 @@ export default function App() {
           wrong = sentenceData[Math.floor(Math.random() * sentenceData.length)].french;
         }
 
-        if (wrong.toLowerCase() !== currentSentenceFr.toLowerCase()) {
+        if (normalizeFunc(wrong) !== currentSentenceFrNorm) {
           wrongSentences.add(wrong);
         }
       }
@@ -843,7 +857,7 @@ export default function App() {
                 <MessageSquare className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-black">IBKane AI</h2>
+                <h2 className="text-xl font-black">IBKane IA</h2>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">En ligne • Assistant Éducatif</span>
@@ -907,17 +921,21 @@ export default function App() {
                 {userName.charAt(0).toUpperCase()}
               </div>
               <div className="text-center">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2">Profil Utilisateur</p>
                 <div className="flex items-center justify-center gap-2 mb-1">
-                  <input
-                    type="text"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    className="text-3xl font-black bg-transparent border-b-2 border-transparent focus:border-indigo-500 focus:outline-none text-center w-full max-w-[250px]"
-                    placeholder="Ton nom"
-                  />
+                  <div className="relative group">
+                    <input
+                      type="text"
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      className="text-3xl font-black bg-transparent border-b-2 border-transparent focus:border-indigo-500 focus:outline-none text-center w-full max-w-[250px] transition-all"
+                      placeholder="Nom d'utilisateur"
+                    />
+                    <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-indigo-500 scale-x-0 group-focus-within:scale-x-100 transition-transform" />
+                  </div>
                   <User className="w-5 h-5 opacity-30" />
                 </div>
-                <div className="flex items-center gap-2 justify-center">
+                <div className="flex items-center gap-2 justify-center mt-2">
                   <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-black uppercase tracking-widest">
                     NIVEAU {userLevel}
                   </span>
