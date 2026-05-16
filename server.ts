@@ -52,7 +52,9 @@ app.post("/api/chat", async (req, res) => {
     });
 
     const result = await chat.sendMessage({ message });
-    res.json({ text: result.text });
+    // Remove symbols as requested by user
+    const cleanedText = result.text.replace(/\*+/g, '').replace(/#+/g, '');
+    res.json({ text: cleanedText });
   } catch (error: any) {
     console.error("AI Error:", error);
     res.status(500).json({ error: error.message || "Une erreur est survenue avec l'IA." });

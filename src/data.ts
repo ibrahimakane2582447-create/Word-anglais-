@@ -250,6 +250,36 @@ export interface SentenceEntry {
   french: string;
 }
 
+export interface TrueFalseEntry {
+  id: string;
+  statement: string;
+  isTrue: boolean;
+  explanation: string;
+}
+
+export const trueFalseData: TrueFalseEntry[] = [
+  { id: 'tf1', statement: "The sun rises in the West.", isTrue: false, explanation: "The sun rises in the East." },
+  { id: 'tf2', statement: "Dogs are mammals.", isTrue: true, explanation: "Dogs belong to the mammal group." },
+  { id: 'tf3', statement: "Apple is a fruit.", isTrue: true, explanation: "Apples grow on trees and are fruits." },
+  { id: 'tf4', statement: "Water boils at 0 degrees Celsius.", isTrue: false, explanation: "Water boils at 100 degrees Celsius." },
+  { id: 'tf5', statement: "There are twelve months in a year.", isTrue: true, explanation: "From January to December." },
+  { id: 'tf6', statement: "Elephants can fly.", isTrue: false, explanation: "Elephants are heavy land mammals." },
+  { id: 'tf7', statement: "English is the official language in London.", isTrue: true, explanation: "London is the capital of England." },
+  { id: 'tf8', statement: "A triangle has four sides.", isTrue: false, explanation: "A triangle has three sides." },
+  { id: 'tf9', statement: "The moon shines with its own light.", isTrue: false, explanation: "The moon reflects light from the sun." },
+  { id: 'tf10', statement: "Cats say 'meow'.", isTrue: true, explanation: "Meowing is the typical sound of a cat." },
+  { id: 'tf11', statement: "A square has four equal sides.", isTrue: true, explanation: "That is the definition of a square." },
+  { id: 'tf12', statement: "Fish can breathe underwater.", isTrue: true, explanation: "Fish use gills to breathe in water." },
+  { id: 'tf13', statement: "Computers need electricity to work.", isTrue: true, explanation: "Electricity powers the circuits." },
+  { id: 'tf14', statement: "Ants are bigger than elephants.", isTrue: false, explanation: "Ants are tiny insects." },
+  { id: 'tf15', statement: "Winter is usually the hottest season.", isTrue: false, explanation: "Winter is the coldest season." },
+  { id: 'tf16', statement: "The capital of France is Paris.", isTrue: true, explanation: "Paris is the main city of France." },
+  { id: 'tf17', statement: "A year has 365 days.", isTrue: true, explanation: "Standard calendar year length." },
+  { id: 'tf18', statement: "Birds have feathers.", isTrue: true, explanation: "All birds are feathered animals." },
+  { id: 'tf19', statement: "Humans can survive without water for a month.", isTrue: false, explanation: "We need water every few days." },
+  { id: 'tf20', statement: "The Earth is flat.", isTrue: false, explanation: "The Earth is roughly a sphere." },
+];
+
 const verbsEnList = ['Run', 'Eat', 'Drink', 'Sleep', 'Walk', 'Jump', 'Sing', 'Dance', 'Read', 'Write', 'Work', 'Play', 'Learn', 'Teach', 'Buy', 'Sell', 'Bring', 'Take', 'Look', 'Listen', 'Speak', 'Wait', 'Think', 'Believe', 'Feel', 'Grow', 'Break', 'Fix', 'Clean', 'Wash'];
 const adverbsEnList = ['Quickly', 'Slowly', 'Carefully', 'Hard', 'Happily', 'Sadly', 'Loudly', 'Quietly', 'Often', 'Never', 'Always', 'Soon', 'Later', 'Now', 'Well', 'Badly', 'Easily', 'Properly', 'Everywhere', 'Anywhere'];
 const nounsEnList = ['Cat', 'Dog', 'Bird', 'Fish', 'Horse', 'Cow', 'Pig', 'Sheep', 'Mouse', 'Elephant', 'Lion', 'Tiger', 'Bear', 'Monkey', 'Snake', 'Car', 'Bus', 'Train', 'Plane', 'Boat', 'House', 'Building', 'Room', 'Door', 'Window', 'Table', 'Chair', 'Bed', 'Clock', 'Phone', 'Computer', 'Book', 'Pen', 'Pencil', 'Paper', 'Tree', 'Flower', 'Grass', 'River', 'Mountain', 'Sun', 'Moon', 'Star', 'Cloud', 'Rain'];

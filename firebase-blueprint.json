@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Game Room",
+      "description": "A multiplayer game room",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "4-digit room code" },
+        "status": { "type": "string", "enum": ["waiting", "playing", "finished"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "totalQuestions": { "type": "number" },
+        "questions": { "type": "array", "description": "List of question IDs or data" }
+      },
+      "required": ["code", "status", "createdAt", "totalQuestions", "questions"]
+    },
+    "Player": {
+      "title": "Player",
+      "description": "A player in a game room",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "score": { "type": "number" },
+        "questionsAnswered": { "type": "number" },
+        "lastUpdate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "score", "questionsAnswered", "lastUpdate"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Collection of game rooms"
+    },
+    "/rooms/{roomId}/players/{playerId}": {
+      "schema": "Player",
+      "description": "Players inside a specific room"
+    }
+  }
+}

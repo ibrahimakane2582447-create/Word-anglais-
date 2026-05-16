@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Room rules
+    match /rooms/{roomId} {
+      function isValidRoom(data) {
+        return data.keys().hasAll(['code', 'status', 'createdAt', 'totalQuestions', 'questions']) &&
+               data.keys().size() == 5 &&
+               data.code is string && data.code.size() == 4 &&
+               data.status in ['waiting', 'playing', 'finished'] &&
+               data.totalQuestions is number &&
+               data.questions is list &&
+               data.createdAt == request.time;
+      }
+
+      allow create: if isSignedIn() && isValidRoom(incoming());
+      allow read: if isSignedIn();
+      allow update: if isSignedIn() && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+        incoming().status in ['waiting', 'playing', 'finished']
+      );
+
+      // Players subcollection
+      match /players/{playerId} {
+        function isValidPlayer(data) {
+          return data.keys().hasAll(['name', 'score', 'questionsAnswered', 'lastUpdate']) &&
+                 data.keys().size() == 4 &&
+                 data.name is string && data.name.size() <= 50 &&
+                 data.score is number &&
+                 data.questionsAnswered is number &&
+                 data.lastUpdate == request.time;
+        }
+
+        allow create: if isSignedIn() && isValidId(playerId) && playerId == request.auth.uid && isValidPlayer(incoming());
+        allow read: if isSignedIn();
+        allow update: if isSignedIn() && playerId == request.auth.uid && 
+                      isValidPlayer(incoming()) &&
+                      incoming().lastUpdate == request.time &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['score', 'questionsAnswered', 'lastUpdate']);
+      }
+    }
+  }
+}
