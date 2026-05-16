@@ -89,7 +89,9 @@ export default function App() {
 
       const data = await response.json();
       if (data.text) {
-        setChatMessages(prev => [...prev, { role: 'model', parts: [{ text: data.text }] }]);
+        // Nettoyage supplémentaire des symboles markdown au cas où
+        const cleanText = data.text.replace(/[*#_~`]/g, '').trim();
+        setChatMessages(prev => [...prev, { role: 'model', parts: [{ text: cleanText }] }]);
       } else if (data.error) {
         setChatMessages(prev => [...prev, { role: 'model', parts: [{ text: "Désolé, j'ai rencontré un problème : " + data.error }] }]);
       }
@@ -928,8 +930,8 @@ export default function App() {
                       type="text"
                       value={userName}
                       onChange={(e) => setUserName(e.target.value)}
-                      className="text-3xl font-black bg-transparent border-b-2 border-transparent focus:border-indigo-500 focus:outline-none text-center w-full max-w-[250px] transition-all"
-                      placeholder="Nom d'utilisateur"
+                      className="text-3xl font-black bg-transparent border-b-2 border-transparent focus:border-indigo-500 focus:outline-none text-center w-full max-w-[250px] transition-all hover:border-gray-300"
+                      placeholder="Ton nom d'utilisateur"
                     />
                     <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-indigo-500 scale-x-0 group-focus-within:scale-x-100 transition-transform" />
                   </div>
