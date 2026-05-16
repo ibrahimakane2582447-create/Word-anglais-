@@ -56,51 +56,51 @@ const baseVerbs = [
 ];
 
 const baseNouns = [
-  { en: 'Time', fr: 'Temps' }, { en: 'Year', fr: 'Année' }, { en: 'People', fr: 'Gens' },
-  { en: 'Way', fr: 'Chemin' }, { en: 'Day', fr: 'Jour' }, { en: 'Man', fr: 'Homme' },
-  { en: 'Thing', fr: 'Chose' }, { en: 'Woman', fr: 'Femme' }, { en: 'Life', fr: 'Vie' },
-  { en: 'Child', fr: 'Enfant' }, { en: 'World', fr: 'Monde' }, { en: 'School', fr: 'École' },
-  { en: 'State', fr: 'État' }, { en: 'Family', fr: 'Famille' }, { en: 'Student', fr: 'Étudiant' },
-  { en: 'Group', fr: 'Groupe' }, { en: 'Country', fr: 'Pays' }, { en: 'Problem', fr: 'Problème' },
-  { en: 'Hand', fr: 'Main' }, { en: 'Part', fr: 'Partie' }, { en: 'Place', fr: 'Lieu' },
-  { en: 'Case', fr: 'Cas' }, { en: 'Week', fr: 'Semaine' }, { en: 'Company', fr: 'Entreprise' },
-  { en: 'System', fr: 'Système' }, { en: 'Program', fr: 'Programme' }, { en: 'Question', fr: 'Question' },
-  { en: 'Work', fr: 'Travail' }, { en: 'Government', fr: 'Gouvernement' }, { en: 'Number', fr: 'Nombre' },
-  { en: 'Night', fr: 'Nuit' }, { en: 'Mr', fr: 'Monsieur' }, { en: 'Point', fr: 'Point' },
-  { en: 'Home', fr: 'Maison' }, { en: 'Water', fr: 'Eau' }, { en: 'Room', fr: 'Pièce' },
-  { en: 'Mother', fr: 'Mère' }, { en: 'Area', fr: 'Zone' }, { en: 'Money', fr: 'Argent' },
-  { en: 'Story', fr: 'Histoire' }, { en: 'Fact', fr: 'Fait' }, { en: 'Month', fr: 'Mois' },
-  { en: 'Lot', fr: 'Lot' }, { en: 'Right', fr: 'Droit' }, { en: 'Study', fr: 'Étude' },
-  { en: 'Book', fr: 'Livre' }, { en: 'Eye', fr: 'Œil' }, { en: 'Job', fr: 'Emploi' },
-  { en: 'Word', fr: 'Mot' }, { en: 'Business', fr: 'Affaire' }, { en: 'Issue', fr: 'Problème' },
-  { en: 'Side', fr: 'Côté' }, { en: 'Kind', fr: 'Genre' }, { en: 'Head', fr: 'Tête' },
-  { en: 'House', fr: 'Maison' }, { en: 'Service', fr: 'Service' }, { en: 'Friend', fr: 'Ami' },
-  { en: 'Father', fr: 'Père' }, { en: 'Power', fr: 'Pouvoir' }, { en: 'Hour', fr: 'Heure' },
-  { en: 'Game', fr: 'Jeu' }, { en: 'Line', fr: 'Ligne' }, { en: 'End', fr: 'Fin' },
-  { en: 'Member', fr: 'Membre' }, { en: 'Law', fr: 'Loi' }, { en: 'Car', fr: 'Voiture' },
-  { en: 'City', fr: 'Ville' }, { en: 'Community', fr: 'Communauté' }, { en: 'Name', fr: 'Nom' },
-  { en: 'President', fr: 'Président' }, { en: 'Team', fr: 'Équipe' }, { en: 'Minute', fr: 'Minute' },
-  { en: 'Idea', fr: 'Idée' }, { en: 'Kid', fr: 'Enfant' }, { en: 'Body', fr: 'Corps' },
-  { en: 'Information', fr: 'Information' }, { en: 'Back', fr: 'Dos' }, { en: 'Parent', fr: 'Parent' },
-  { en: 'Face', fr: 'Visage' }, { en: 'Others', fr: 'Autres' }, { en: 'Level', fr: 'Niveau' },
-  { en: 'Office', fr: 'Bureau' }, { en: 'Door', fr: 'Porte' }, { en: 'Health', fr: 'Santé' },
-  { en: 'Person', fr: 'Personne' }, { en: 'Art', fr: 'Art' }, { en: 'War', fr: 'Guerre' },
-  { en: 'History', fr: 'Histoire' }, { en: 'Party', fr: 'Fête' }, { en: 'Result', fr: 'Résultat' },
-  { en: 'Change', fr: 'Changement' }, { en: 'Morning', fr: 'Matin' }, { en: 'Reason', fr: 'Raison' },
-  { en: 'Research', fr: 'Recherche' }, { en: 'Girl', fr: 'Fille' }, { en: 'Guy', fr: 'Gars' },
-  { en: 'Moment', fr: 'Moment' }, { en: 'Air', fr: 'Air' }, { en: 'Teacher', fr: 'Professeur' },
-  { en: 'Force', fr: 'Force' }, { en: 'Education', fr: 'Éducation' },
-  { en: 'Food', fr: 'Nourriture' }, { en: 'Bird', fr: 'Oiseau' }, { en: 'Cat', fr: 'Chat' },
-  { en: 'Dog', fr: 'Chien' }, { en: 'Tree', fr: 'Arbre' }, { en: 'Sun', fr: 'Soleil' },
-  { en: 'Moon', fr: 'Lune' }, { en: 'Star', fr: 'Étoile' }, { en: 'Rain', fr: 'Pluie' },
-  { en: 'Road', fr: 'Route' }, { en: 'Street', fr: 'Rue' }, { en: 'Table', fr: 'Table' },
-  { en: 'Chair', fr: 'Chaise' }, { en: 'Bed', fr: 'Lit' }, { en: 'Key', fr: 'Clé' },
-  { en: 'Phone', fr: 'Téléphone' }, { en: 'Garden', fr: 'Jardin' }, { en: 'Flower', fr: 'Fleur' },
-  { en: 'Computer', fr: 'Ordinateur' }, { en: 'Window', fr: 'Fenêtre' }, { en: 'Sky', fr: 'Ciel' },
-  { en: 'Ocean', fr: 'Océan' }, { en: 'River', fr: 'Rivière' }, { en: 'Mountain', fr: 'Montagne' },
-  { en: 'Apple', fr: 'Pomme' }, { en: 'Bread', fr: 'Pain' }, { en: 'Milk', fr: 'Lait' },
-  { en: 'Music', fr: 'Musique' }, { en: 'Movie', fr: 'Film' }, { en: 'News', fr: 'Nouvelles' },
-  { en: 'Future', fr: 'Futur' }, { en: 'Past', fr: 'Passé' }, { en: 'Truth', fr: 'Vérité' }
+  { en: 'Time', fr: 'Temps', g: 'm' }, { en: 'Year', fr: 'Année', g: 'f' }, { en: 'People', fr: 'Gens', g: 'm' },
+  { en: 'Way', fr: 'Chemin', g: 'm' }, { en: 'Day', fr: 'Jour', g: 'm' }, { en: 'Man', fr: 'Homme', g: 'm' },
+  { en: 'Thing', fr: 'Chose', g: 'f' }, { en: 'Woman', fr: 'Femme', g: 'f' }, { en: 'Life', fr: 'Vie', g: 'f' },
+  { en: 'Child', fr: 'Enfant', g: 'm' }, { en: 'World', fr: 'Monde', g: 'm' }, { en: 'School', fr: 'École', g: 'f' },
+  { en: 'State', fr: 'État', g: 'm' }, { en: 'Family', fr: 'Famille', g: 'f' }, { en: 'Student', fr: 'Étudiant', g: 'm' },
+  { en: 'Group', fr: 'Groupe', g: 'm' }, { en: 'Country', fr: 'Pays', g: 'm' }, { en: 'Problem', fr: 'Problème', g: 'm' },
+  { en: 'Hand', fr: 'Main', g: 'f' }, { en: 'Part', fr: 'Partie', g: 'f' }, { en: 'Place', fr: 'Lieu', g: 'm' },
+  { en: 'Case', fr: 'Cas', g: 'm' }, { en: 'Week', fr: 'Semaine', g: 'f' }, { en: 'Company', fr: 'Entreprise', g: 'f' },
+  { en: 'System', fr: 'Système', g: 'm' }, { en: 'Program', fr: 'Programme', g: 'm' }, { en: 'Question', fr: 'Question', g: 'f' },
+  { en: 'Work', fr: 'Travail', g: 'm' }, { en: 'Government', fr: 'Gouvernement', g: 'm' }, { en: 'Number', fr: 'Nombre', g: 'm' },
+  { en: 'Night', fr: 'Nuit', g: 'f' }, { en: 'Mr', fr: 'Monsieur', g: 'm' }, { en: 'Point', fr: 'Point', g: 'm' },
+  { en: 'Home', fr: 'Maison', g: 'f' }, { en: 'Water', fr: 'Eau', g: 'f' }, { en: 'Room', fr: 'Pièce', g: 'f' },
+  { en: 'Mother', fr: 'Mère', g: 'f' }, { en: 'Area', fr: 'Zone', g: 'f' }, { en: 'Money', fr: 'Argent', g: 'm' },
+  { en: 'Story', fr: 'Histoire', g: 'f' }, { en: 'Fact', fr: 'Fait', g: 'm' }, { en: 'Month', fr: 'Mois', g: 'm' },
+  { en: 'Lot', fr: 'Lot', g: 'm' }, { en: 'Right', fr: 'Droit', g: 'm' }, { en: 'Study', fr: 'Étude', g: 'f' },
+  { en: 'Book', fr: 'Livre', g: 'm' }, { en: 'Eye', fr: 'Œil', g: 'm' }, { en: 'Job', fr: 'Emploi', g: 'm' },
+  { en: 'Word', fr: 'Mot', g: 'm' }, { en: 'Business', fr: 'Affaire', g: 'f' }, { en: 'Issue', fr: 'Problème', g: 'm' },
+  { en: 'Side', fr: 'Côté', g: 'm' }, { en: 'Kind', fr: 'Genre', g: 'm' }, { en: 'Head', fr: 'Tête', g: 'f' },
+  { en: 'House', fr: 'Maison', g: 'f' }, { en: 'Service', fr: 'Service', g: 'm' }, { en: 'Friend', fr: 'Ami', g: 'm' },
+  { en: 'Father', fr: 'Père', g: 'm' }, { en: 'Power', fr: 'Pouvoir', g: 'm' }, { en: 'Hour', fr: 'Heure', g: 'f' },
+  { en: 'Game', fr: 'Jeu', g: 'm' }, { en: 'Line', fr: 'Ligne', g: 'f' }, { en: 'End', fr: 'Fin', g: 'f' },
+  { en: 'Member', fr: 'Membre', g: 'm' }, { en: 'Law', fr: 'Loi', g: 'f' }, { en: 'Car', fr: 'Voiture', g: 'f' },
+  { en: 'City', fr: 'Ville', g: 'f' }, { en: 'Community', fr: 'Communauté', g: 'f' }, { en: 'Name', fr: 'Nom', g: 'm' },
+  { en: 'President', fr: 'Président', g: 'm' }, { en: 'Team', fr: 'Équipe', g: 'f' }, { en: 'Minute', fr: 'Minute', g: 'f' },
+  { en: 'Idea', fr: 'Idée', g: 'f' }, { en: 'Kid', fr: 'Enfant', g: 'm' }, { en: 'Body', fr: 'Corps', g: 'm' },
+  { en: 'Information', fr: 'Information', g: 'f' }, { en: 'Back', fr: 'Dos', g: 'm' }, { en: 'Parent', fr: 'Parent', g: 'm' },
+  { en: 'Face', fr: 'Visage', g: 'm' }, { en: 'Others', fr: 'Autres', g: 'm' }, { en: 'Level', fr: 'Niveau', g: 'm' },
+  { en: 'Office', fr: 'Bureau', g: 'm' }, { en: 'Door', fr: 'Porte', g: 'f' }, { en: 'Health', fr: 'Santé', g: 'f' },
+  { en: 'Person', fr: 'Personne', g: 'f' }, { en: 'Art', fr: 'Art', g: 'm' }, { en: 'War', fr: 'Guerre', g: 'f' },
+  { en: 'History', fr: 'Histoire', g: 'f' }, { en: 'Party', fr: 'Fête', g: 'f' }, { en: 'Result', fr: 'Résultat', g: 'm' },
+  { en: 'Change', fr: 'Changement', g: 'm' }, { en: 'Morning', fr: 'Matin', g: 'm' }, { en: 'Reason', fr: 'Raison', g: 'f' },
+  { en: 'Research', fr: 'Recherche', g: 'f' }, { en: 'Girl', fr: 'Fille', g: 'f' }, { en: 'Guy', fr: 'Gars', g: 'm' },
+  { en: 'Moment', fr: 'Moment', g: 'm' }, { en: 'Air', fr: 'Air', g: 'm' }, { en: 'Teacher', fr: 'Professeur', g: 'm' },
+  { en: 'Force', fr: 'Force', g: 'f' }, { en: 'Education', fr: 'Éducation', g: 'f' },
+  { en: 'Food', fr: 'Nourriture', g: 'f' }, { en: 'Bird', fr: 'Oiseau', g: 'm' }, { en: 'Cat', fr: 'Chat', g: 'm' },
+  { en: 'Dog', fr: 'Chien', g: 'm' }, { en: 'Tree', fr: 'Arbre', g: 'm' }, { en: 'Sun', fr: 'Soleil', g: 'm' },
+  { en: 'Moon', fr: 'Lune', g: 'f' }, { en: 'Star', fr: 'Étoile', g: 'f' }, { en: 'Rain', fr: 'Pluie', g: 'f' },
+  { en: 'Road', fr: 'Route', g: 'f' }, { en: 'Street', fr: 'Rue', g: 'f' }, { en: 'Table', fr: 'Table', g: 'f' },
+  { en: 'Chair', fr: 'Chaise', g: 'f' }, { en: 'Bed', fr: 'Lit', g: 'm' }, { en: 'Key', fr: 'Clé', g: 'f' },
+  { en: 'Phone', fr: 'Téléphone', g: 'm' }, { en: 'Garden', fr: 'Jardin', g: 'm' }, { en: 'Flower', fr: 'Fleur', g: 'f' },
+  { en: 'Computer', fr: 'Ordinateur', g: 'm' }, { en: 'Window', fr: 'Fenêtre', g: 'f' }, { en: 'Sky', fr: 'Ciel', g: 'm' },
+  { en: 'Ocean', fr: 'Océan', g: 'm' }, { en: 'River', fr: 'Rivière', g: 'f' }, { en: 'Mountain', fr: 'Montagne', g: 'f' },
+  { en: 'Apple', fr: 'Pomme', g: 'f' }, { en: 'Bread', fr: 'Pain', g: 'm' }, { en: 'Milk', fr: 'Lait', g: 'm' },
+  { en: 'Music', fr: 'Musique', g: 'f' }, { en: 'Movie', fr: 'Film', g: 'm' }, { en: 'News', fr: 'Nouvelles', g: 'f' },
+  { en: 'Future', fr: 'Futur', g: 'm' }, { en: 'Past', fr: 'Passé', g: 'm' }, { en: 'Truth', fr: 'Vérité', g: 'f' }
 ];
 
 const baseAdjectives = [
@@ -256,13 +256,25 @@ const nounsEnList = ['Cat', 'Dog', 'Bird', 'Fish', 'Horse', 'Cow', 'Pig', 'Sheep
 
 const verbsFrList = ['Courir', 'Manger', 'Boire', 'Dormir', 'Marcher', 'Sauter', 'Chanter', 'Danser', 'Lire', 'Écrire', 'Travailler', 'Jouer', 'Apprendre', 'Enseigner', 'Acheter', 'Vendre', 'Apporter', 'Prendre', 'Regarder', 'Écouter', 'Parler', 'Attendre', 'Penser', 'Croire', 'Ressentir', 'Grandir', 'Casser', 'Réparer', 'Nettoyer', 'Laver'];
 const adverbsFrList = ['Vite', 'Lentement', 'Prudemment', 'Fort', 'Joyeusement', 'Tristement', 'Bruyamment', 'Silencieusement', 'Souvent', 'Jamais', 'Toujours', 'Bientôt', 'Plus tard', 'Maintenant', 'Bien', 'Mal', 'Facilement', 'Correctement', 'Partout', 'N’importe où'];
-const nounsFrList = ['Chat', 'Chien', 'Oiseau', 'Poisson', 'Cheval', 'Vache', 'Cochon', 'Mouton', 'Souris', 'Éléphant', 'Lion', 'Tigre', 'Ours', 'Singe', 'Serpent', 'Voiture', 'Bus', 'Train', 'Avion', 'Bateau', 'Maison', 'Bâtiment', 'Pièce', 'Porte', 'Fenêtre', 'Table', 'Chaise', 'Lit', 'Horloge', 'Téléphone', 'Ordinateur', 'Livre', 'Stylo', 'Crayon', 'Papier', 'Arbre', 'Fleur', 'Herbe', 'Rivière', 'Montagne', 'Soleil', 'Lune', 'Étoile', 'Nuage', 'Pluie'];
+const nounsFrList = [
+  { fr: 'Chat', g: 'm' }, { fr: 'Chien', g: 'm' }, { fr: 'Oiseau', g: 'm' }, { fr: 'Poisson', g: 'm' }, { fr: 'Cheval', g: 'm' },
+  { fr: 'Vache', g: 'f' }, { fr: 'Cochon', g: 'm' }, { fr: 'Mouton', g: 'm' }, { fr: 'Souris', g: 'f' }, { fr: 'Éléphant', g: 'm' },
+  { fr: 'Lion', g: 'm' }, { fr: 'Tigre', g: 'm' }, { fr: 'Ours', g: 'm' }, { fr: 'Singe', g: 'm' }, { fr: 'Serpent', g: 'm' },
+  { fr: 'Voiture', g: 'f' }, { fr: 'Bus', g: 'm' }, { fr: 'Train', g: 'm' }, { fr: 'Avion', g: 'm' }, { fr: 'Bateau', g: 'm' },
+  { fr: 'Maison', g: 'f' }, { fr: 'Bâtiment', g: 'm' }, { fr: 'Pièce', g: 'f' }, { fr: 'Porte', g: 'f' }, { fr: 'Fenêtre', g: 'f' },
+  { fr: 'Table', g: 'f' }, { fr: 'Chaise', g: 'f' }, { fr: 'Lit', g: 'm' }, { fr: 'Horloge', g: 'f' }, { fr: 'Téléphone', g: 'm' },
+  { fr: 'Ordinateur', g: 'm' }, { fr: 'Livre', g: 'm' }, { fr: 'Stylo', g: 'm' }, { fr: 'Crayon', g: 'm' }, { fr: 'Papier', g: 'm' },
+  { fr: 'Arbre', g: 'm' }, { fr: 'Fleur', g: 'f' }, { fr: 'Herbe', g: 'f' }, { fr: 'Rivière', g: 'f' }, { fr: 'Montagne', g: 'f' },
+  { fr: 'Soleil', g: 'm' }, { fr: 'Lune', g: 'f' }, { fr: 'Étoile', g: 'f' }, { fr: 'Nuage', g: 'm' }, { fr: 'Pluie', g: 'f' }
+];
 
 export const sentenceTemplates = [
   { en: "I like to {verb} {adverb}.", fr: "J'aime {verbInf} {advFr}." },
   { en: "Can you {verb} {adverb}?", fr: "Peux-tu {verbInf} {advFr} ?" },
-  { en: "I see a {noun}.", fr: "Je vois un/une {nounFr}." },
-  { en: "The {noun} is here.", fr: "Le/La {nounFr} est ici." },
+  { en: "I see a {noun}.", fr: "Je vois {artInd} {nounFr}." },
+  { en: "The {noun} is here.", fr: "{artDef} {nounFr} est ici." },
+  { en: "I want a {noun}.", fr: "Je veux {artInd} {nounFr}." },
+  { en: "Where is the {noun}?", fr: "Où est {artDef} {nounFr} ?" },
 ];
 
 export const generateSentences = (count: number): SentenceEntry[] => {
@@ -273,6 +285,14 @@ export const generateSentences = (count: number): SentenceEntry[] => {
     const aIdx = Math.floor(Math.random() * adverbsEnList.length);
     const nIdx = Math.floor(Math.random() * nounsEnList.length);
 
+    const nounFrObj = nounsFrList[nIdx];
+    const artInd = nounFrObj.g === 'm' ? 'un' : 'une';
+    const artDef = nounFrObj.g === 'm' ? 'le' : 'la';
+    
+    // Pour "le" ou "la" devant voyelle
+    const startsWithVowel = /^[aeiouh]/i.test(nounFrObj.fr);
+    const realArtDef = startsWithVowel ? "l'" : artDef + " ";
+
     let en = template.en
       .replace("{verb}", verbsEnList[vIdx].toLowerCase())
       .replace("{adverb}", adverbsEnList[aIdx].toLowerCase())
@@ -281,12 +301,19 @@ export const generateSentences = (count: number): SentenceEntry[] => {
     let fr = template.fr
       .replace("{verbInf}", verbsFrList[vIdx].toLowerCase())
       .replace("{advFr}", adverbsFrList[aIdx].toLowerCase())
-      .replace("{nounFr}", nounsFrList[nIdx].toLowerCase());
+      .replace("{artInd}", artInd)
+      .replace("{artDef}", realArtDef.trim())
+      .replace("{nounFr}", nounFrObj.fr.toLowerCase());
+
+    // Ajustement pour l'élision (l'avion)
+    if (fr.includes("l' ")) {
+       fr = fr.replace("l' ", "l'");
+    }
 
     sentences.push({
       id: `s-${i}`,
       english: en,
-      french: fr
+      french: fr.charAt(0).toUpperCase() + fr.slice(1)
     });
   }
   return sentences;

@@ -1,27 +1,17 @@
 {
-  "name": "Engl. Words & Verbs",
-  "short_name": "Engl. Words",
-  "description": "Apprendre 1000 mots et verbes en anglais",
+  "name": "VocabAnglais - Ibrahima Kane",
+  "short_name": "VocabAnglais",
+  "description": "Apprendre l'anglais avec Ibrahima Kane",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#172554",
+  "background_color": "#4f46e5",
+  "theme_color": "#4f46e5",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml"
-    },
-    {
-      "src": "/icon.svg",
+      "src": "https://cdn-icons-png.flaticon.com/512/190/190614.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

@@ -1,5 +1,6 @@
 {
   "name": "EnglishVocab",
   "description": "Application d'apprentissage de vocabulaire anglais pour les collégiens et lycéens.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
