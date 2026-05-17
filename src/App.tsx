@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Search, BookOpen, Heart, Gamepad2, List, CheckCircle2, XCircle, Flame, PlusCircle, Save, Settings, Image as ImageIcon, Palette, Sun, Moon, MessageSquare, Send, User, Loader2, Users } from 'lucide-react';
+import { Bell, Search, BookOpen, Heart, Gamepad2, List, CheckCircle2, XCircle, Flame, PlusCircle, Save, Settings, Image as ImageIcon, Palette, Sun, Moon, MessageSquare, Send, User, Loader2, Users, Zap, BrainCircuit, Type, ChevronRight, MessageSquareText } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { vocabularyData, WordEntry, sentenceData, SentenceEntry, trueFalseData, TrueFalseEntry } from './data';
 import MultiplayerGame from './components/MultiplayerGame';
+import { sounds } from './lib/sounds';
 
-type Tab = 'dict' | 'fav' | 'quiz' | 'add' | 'settings' | 'profile' | 'chat' | 'multiplayer';
+import { getLevenshteinDistance, findBestMatches } from './lib/searchUtils';
+
+type Tab = 'dict' | 'fav' | 'quiz' | 'add' | 'settings' | 'profile' | 'multiplayer';
 type QuizMode = 'mots' | 'phrases' | 'true_false';
 type PhraseGameType = 'translation' | 'puzzle';
 
@@ -55,54 +58,6 @@ export default function App() {
 
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // --- IBKANE AI CHAT ---
-  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'model', parts: {text: string}[]}[]>(() => {
-    const saved = localStorage.getItem('vocab-chat');
-    return saved ? JSON.parse(saved) : [{
-      role: 'model',
-      parts: [{ text: "Bonjour ! Je suis IBKane IA. Comment puis-je t'aider dans ton apprentissage de l'anglais ou du français aujourd'hui ?" }]
-    }];
-  });
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem('vocab-chat', JSON.stringify(chatMessages));
-  }, [chatMessages]);
-
-  const handleSendMessage = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
-
-    const userMessage = { role: 'user' as const, parts: [{ text: chatInput }] };
-    setChatMessages(prev => [...prev, userMessage]);
-    setChatInput('');
-    setIsChatLoading(true);
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: chatInput,
-          history: chatMessages.slice(-10) // Send last 10 messages for context
-        }),
-      });
-
-      const data = await response.json();
-      if (data.text) {
-        // Nettoyage supplémentaire des symboles markdown au cas où
-        const cleanText = data.text.replace(/[*#_~`]/g, '').trim();
-        setChatMessages(prev => [...prev, { role: 'model', parts: [{ text: cleanText }] }]);
-      } else if (data.error) {
-        setChatMessages(prev => [...prev, { role: 'model', parts: [{ text: "Désolé, j'ai rencontré un problème : " + data.error }] }]);
-      }
-    } catch (err) {
-      setChatMessages(prev => [...prev, { role: 'model', parts: [{ text: "Problème de connexion avec l'IA. Vérifie ton accès internet." }] }]);
-    } finally {
-      setIsChatLoading(false);
-    }
-  };
-
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -135,8 +90,44 @@ export default function App() {
     }, 3000);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    // Disable Copy, Paste, Context Menu and certain keys globally
+    const handleContext = (e: MouseEvent) => e.preventDefault();
+    const handleCopy = (e: ClipboardEvent | Event) => e.preventDefault();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Disable Ctrl+C, Ctrl+V, Zoom (Ctrl + / - / 0)
+      if (e.ctrlKey && ['c', 'v', 'x', '+', '-', '0'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+      }
+      // Disable Cmd on Mac
+      if (e.metaKey && ['c', 'v', 'x', '+', '-', '0'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+      }
+      // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U (DevTools)
+      if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase())) || (e.ctrlKey && e.key.toLowerCase() === 'u')) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('contextmenu', handleContext);
+    window.addEventListener('copy', handleCopy);
+    window.addEventListener('cut', handleCopy);
+    window.addEventListener('paste', handleCopy);
+    window.addEventListener('keydown', handleKeyDown, true);
+    
+    return () => {
+      window.removeEventListener('contextmenu', handleContext);
+      window.removeEventListener('copy', handleCopy);
+      window.removeEventListener('cut', handleCopy);
+      window.removeEventListener('paste', handleCopy);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, []);
   const [phraseGameType, setPhraseGameType] = useState<PhraseGameType>('translation');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestedCorrection, setSuggestedCorrection] = useState<WordEntry | null>(null);
   
   // Mots personnalisés ajoutés par l'utilisateur
   const [customWords, setCustomWords] = useState<WordEntry[]>(() => {
@@ -174,12 +165,36 @@ export default function App() {
 
   // Filtrer les mots pour le dictionnaire
   const filteredWords = useMemo(() => {
+    if (!searchTerm.trim()) {
+      setSuggestedCorrection(null);
+      return allWords.slice(0, 50);
+    }
+
+    const term = searchTerm.toLowerCase();
     const filtered = allWords.filter((word) => {
-      return word.english.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             word.french.toLowerCase().includes(searchTerm.toLowerCase());
+      return word.english.toLowerCase().includes(term) ||
+             word.french.toLowerCase().includes(term);
     });
+
+    // Correction orthographique automatique si aucun résultat exact
+    if (filtered.length === 0 && searchTerm.length > 2) {
+      const matches = findBestMatches(searchTerm, allWords, 1);
+      if (matches.length > 0) {
+        setSuggestedCorrection(matches[0]);
+      } else {
+        setSuggestedCorrection(null);
+      }
+    } else {
+      setSuggestedCorrection(null);
+    }
+
     // Limiter à 100 résultats pour la performance
     return filtered.slice(0, 100);
+  }, [searchTerm, allWords]);
+
+  const searchSuggestions = useMemo(() => {
+    if (searchTerm.length < 2) return [];
+    return findBestMatches(searchTerm, allWords, 5);
   }, [searchTerm, allWords]);
 
   const favoriteWords = useMemo(() => {
@@ -343,6 +358,9 @@ export default function App() {
     const normalize = (s: string) => s.toLowerCase().replace(/[.!?]$/, '').trim();
     const isCorrect = normalize(answer) === normalize(correctAnswer);
 
+    if (isCorrect) sounds.playCorrect();
+    else sounds.playIncorrect();
+
     // Update global stats
     setUserStats(prev => ({
       totalAttempted: prev.totalAttempted + 1,
@@ -489,7 +507,7 @@ export default function App() {
         <div className="px-6 pt-12 pb-2 flex items-center justify-between">
           <div className="flex items-center">
             <BookOpen className="w-8 h-8 mr-2" />
-            <h1 className="text-2xl font-bold tracking-tight">VocabAnglais</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Ibrahima VocabAnglais</h1>
           </div>
           <button 
             onClick={() => setCurrentTab('profile')}
@@ -513,11 +531,45 @@ export default function App() {
                 className="block w-full pl-10 pr-3 py-3 border-none rounded-xl leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-300 sm:text-sm shadow-inner"
                 placeholder={`Rechercher parmi les ${allWords.length} mots...`}
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={(e) => e.target.setAttribute('readonly', 'readonly')}
-                onBlur={(e) => e.target.removeAttribute('readonly')}
-                onClick={(e) => e.currentTarget.removeAttribute('readonly')}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => {
+                  // Delaied close to allow clicking suggestions
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
               />
+              
+              {/* Suggestions Dropdown */}
+              <AnimatePresence>
+                {showSuggestions && searchSuggestions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={`absolute left-0 right-0 top-full mt-2 rounded-2xl shadow-2xl border z-50 overflow-hidden ${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
+                  >
+                    {searchSuggestions.map((word) => (
+                      <button
+                        key={word.id}
+                        onClick={() => {
+                          setSearchTerm(word.english);
+                          setShowSuggestions(false);
+                        }}
+                        className={`w-full p-4 text-left border-b last:border-none flex justify-between items-center transition-colors ${theme.mode === 'dark' ? 'border-gray-700 hover:bg-gray-700/50 text-gray-200' : 'border-gray-50 hover:bg-gray-50 text-gray-800'}`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-bold">{word.english}</span>
+                          <span className="text-xs opacity-60 italic">{word.french}</span>
+                        </div>
+                        <Search className="w-4 h-4 opacity-30" />
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         )}
@@ -527,6 +579,24 @@ export default function App() {
       <main className="flex-1 p-4 pb-24 overflow-y-auto">
         {currentTab === 'dict' && (
           <div className="space-y-4">
+            {suggestedCorrection && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`p-4 rounded-2xl border flex items-center justify-between gap-3 mb-6 ${theme.mode === 'dark' ? 'bg-indigo-900/20 border-indigo-800 text-indigo-300' : 'bg-indigo-50 border-indigo-100 text-indigo-700'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-indigo-500/20">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-widest opacity-60 mb-0.5">Correction Automatique</h4>
+                    <p className="text-sm font-bold">Vouliez-vous dire : <span className="underline decoration-2 underline-offset-4 cursor-pointer" onClick={() => setSearchTerm(suggestedCorrection.english)}>{suggestedCorrection.english}</span> ?</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            
             <div className="flex justify-between items-center px-1">
               <div className="text-sm opacity-60 font-medium">
                 Affichage de {filteredWords.length} résultat(s)
@@ -565,231 +635,127 @@ export default function App() {
         )}
 
         {currentTab === 'quiz' && (
-          <div className="flex flex-col items-center h-full max-w-md mx-auto w-full pt-4">
-            {/* Toggles pour les modes de quiz */}
-            <div className={`flex p-1 rounded-2xl mb-4 w-full shadow-inner ${theme.mode === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
-              <button
-                onClick={() => setQuizMode('phrases')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${quizMode === 'phrases' ? (theme.mode === 'dark' ? 'bg-gray-700 text-white shadow-md' : 'bg-white text-indigo-600 shadow-md') : 'text-gray-500'}`}
-                style={{ color: quizMode === 'phrases' ? theme.accentColor : undefined }}
-              >
-                Phrases
-              </button>
-              <button
-                onClick={() => setQuizMode('true_false')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${quizMode === 'true_false' ? (theme.mode === 'dark' ? 'bg-gray-700 text-white shadow-md' : 'bg-white text-indigo-600 shadow-md') : 'text-gray-500'}`}
-                style={{ color: quizMode === 'true_false' ? theme.accentColor : undefined }}
-              >
-                Vrai/Faux
-              </button>
+          <div className="max-w-md mx-auto w-full space-y-6 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="text-center mb-4">
+              <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-4 text-white shadow-xl rotate-3">
+                <Zap className="w-10 h-10" />
+              </div>
+              <h2 className="text-3xl font-black mb-1">Entraînement</h2>
+              <p className="opacity-40 text-[10px] font-black uppercase tracking-[0.3em]">Développe ton vocabulaire</p>
             </div>
 
-            {quizMode === 'phrases' && (
-              <div className={`flex p-1 rounded-2xl mb-6 w-full shadow-inner ${theme.mode === 'dark' ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+            {/* Mode Selectors */}
+            <div className={`flex p-1.5 rounded-3xl w-full shadow-inner border transition-colors ${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
+              {[
+                { id: 'mots', icon: Type, label: 'Mots' },
+                { id: 'phrases', icon: MessageSquareText, label: 'Phrases' },
+                { id: 'true_false', icon: BrainCircuit, label: 'Vrai/Faux' }
+              ].map((m) => (
                 <button
-                  onClick={() => setPhraseGameType('translation')}
-                  className={`flex-1 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest transition-all ${phraseGameType === 'translation' ? (theme.mode === 'dark' ? 'bg-gray-700 text-white shadow-sm' : 'bg-white text-indigo-600 shadow-sm') : 'opacity-40'}`}
-                  style={{ color: phraseGameType === 'translation' ? theme.accentColor : undefined }}
+                  key={m.id}
+                  onClick={() => { setQuizMode(m.id as any); generateQuizQuestion(); }}
+                  className={`flex-1 py-3 rounded-2xl text-[10px] uppercase font-black tracking-widest transition-all flex flex-col items-center gap-1 ${
+                    quizMode === m.id 
+                      ? (theme.mode === 'dark' ? 'bg-gray-700 text-white shadow-xl' : 'bg-white text-indigo-600 shadow-xl border border-gray-100') 
+                      : 'text-gray-400 opacity-60 hover:opacity-100'
+                  }`}
+                  style={{ color: quizMode === m.id ? theme.accentColor : undefined }}
                 >
-                  Traduction
+                  <m.icon className="w-4 h-4" />
+                  {m.label}
                 </button>
-                <button
-                  onClick={() => setPhraseGameType('puzzle')}
-                  className={`flex-1 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest transition-all ${phraseGameType === 'puzzle' ? (theme.mode === 'dark' ? 'bg-gray-700 text-white shadow-sm' : 'bg-white text-indigo-600 shadow-sm') : 'opacity-40'}`}
-                  style={{ color: phraseGameType === 'puzzle' ? theme.accentColor : undefined }}
-                >
-                  Puzzle
-                </button>
-              </div>
-            )}
+              ))}
+            </div>
 
-            <div className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} p-6 rounded-3xl shadow-sm border w-full text-center relative overflow-hidden z-10`}>
+            <div className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white'} p-8 rounded-[3.5rem] shadow-2xl border w-full text-center relative overflow-hidden`}>
               {streak > 0 && (
-                <div className="absolute top-4 left-4 flex items-center gap-1 text-orange-500 font-bold bg-orange-50 px-3 py-1 rounded-full animate-bounce z-10">
+                <div className="absolute top-6 left-6 flex items-center gap-2 text-white font-black bg-orange-500 px-4 py-1.5 rounded-full shadow-lg z-10 text-[10px] animate-bounce">
                   <Flame className="w-4 h-4" />
-                  {streak}
+                  {streak} SÉRIE
                 </div>
               )}
-
-              <div className="flex justify-end items-center mb-6">
-                <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-wider uppercase ${theme.mode === 'dark' ? 'bg-gray-900 border border-gray-700' : 'bg-indigo-50 text-indigo-700'}`}
-                      style={{ color: theme.mode === 'dark' ? theme.accentColor : undefined }}>
-                  Score: {score.correct}/{score.total}
+              
+              <div className="flex justify-end items-center mb-8">
+                <span className={`px-5 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase border-2 ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700 text-gray-400' : 'bg-indigo-50 border-indigo-100 text-indigo-600'}`}>
+                   SCORE: {score.correct} / {score.total}
                 </span>
               </div>
               
-              <div className="mb-8">
-                <h3 className="text-gray-400 text-xs font-black uppercase tracking-widest mb-4 opacity-60">
-                  {quizMode === 'true_false' ? "Affirmation Vrai ou Faux" : (phraseGameType === 'translation' ? "Traduisez la phrase" : "Reconstituez la phrase")}
+              <div className="mb-10">
+                <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mb-6 opacity-40">
+                  {quizMode === 'true_false' ? "Affirmation Vrai ou Faux" : "Traduisez maintenant"}
                 </h3>
-                <div 
-                  className={`text-xl font-bold leading-relaxed p-6 rounded-2xl border ${theme.mode === 'dark' ? 'bg-gray-900/50 border-gray-700 text-gray-100' : 'bg-indigo-50/50 border-indigo-100/50 text-gray-900'}`}
-                >
-                  {quizMode === 'true_false' ? quizTF?.statement : (phraseGameType === 'translation' ? quizSentence?.english : quizSentence?.french)}
+                <div className={`text-2xl font-black leading-tight p-10 rounded-[2.5rem] ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-indigo-50 text-indigo-900 shadow-inner border border-indigo-100/50'}`}>
+                  {quizMode === 'mots' && quizWord?.english}
+                  {quizMode === 'phrases' && quizSentence?.english}
+                  {quizMode === 'true_false' && quizTF?.statement}
                 </div>
               </div>
 
-              {quizMode === 'true_false' ? (
-                <div className="flex gap-4">
-                  <button
-                    disabled={!!selectedAnswer}
-                    onClick={() => handleAnswer("True")}
-                    className={`flex-1 p-6 rounded-2xl font-black transition-all border-2 text-lg active:scale-95 flex items-center justify-center gap-2 ${
-                      selectedAnswer === null 
-                        ? (theme.mode === 'dark' ? 'bg-gray-900 border-gray-700 hover:border-green-500' : 'bg-gray-50 border-gray-100 hover:border-green-500 text-gray-700')
-                        : (correctAnswer === "True" ? "bg-green-500 text-white border-green-500 shadow-lg scale-105 z-10" : (selectedAnswer === "True" ? "bg-red-500 text-white border-red-500 opacity-70" : "opacity-30 border-transparent"))
-                    }`}
-                  >
-                    <CheckCircle2 className="w-6 h-6" />
-                    VRAI
-                  </button>
-                  <button
-                    disabled={!!selectedAnswer}
-                    onClick={() => handleAnswer("False")}
-                    className={`flex-1 p-6 rounded-2xl font-black transition-all border-2 text-lg active:scale-95 flex items-center justify-center gap-2 ${
-                      selectedAnswer === null 
-                        ? (theme.mode === 'dark' ? 'bg-gray-900 border-gray-700 hover:border-red-500' : 'bg-gray-50 border-gray-100 hover:border-red-500 text-gray-700')
-                        : (correctAnswer === "False" ? "bg-red-500 text-white border-red-500 shadow-lg scale-105 z-10" : (selectedAnswer === "False" ? "bg-green-500 text-white border-red-500 opacity-70" : "opacity-30 border-transparent"))
-                    }`}
-                  >
-                    <XCircle className="w-6 h-6" />
-                    FAUX
-                  </button>
-                </div>
-              ) : (
-                phraseGameType === 'translation' ? (
-                  <div className="space-y-3">
-                    {quizOptions.map((option, idx) => {
-                      let btnClass = "w-full p-5 rounded-2xl text-left font-bold transition-all border-2 relative group ";
-                      if (!selectedAnswer) {
-                        btnClass += theme.mode === 'dark' 
-                          ? "border-gray-700 bg-gray-900 hover:bg-gray-800 text-gray-300 hover:shadow-lg active:scale-95" 
-                          : "border-gray-50 bg-gray-50 hover:bg-white hover:border-indigo-300 text-gray-700 hover:shadow-lg active:scale-95";
-                      } else if (option === correctAnswer) {
-                        btnClass += "border-green-500 bg-green-50/10 text-green-500 shadow-xl z-10 scale-105";
-                      } else if (option === selectedAnswer) {
-                        btnClass += "border-red-500 bg-red-50/10 text-red-500 opacity-90";
-                      } else {
-                        btnClass += "border-transparent opacity-40 scale-95";
-                      }
-
-                      return (
-                        <button
-                          key={idx}
-                          disabled={!!selectedAnswer}
-                          onClick={() => handleAnswer(option)}
-                          className={btnClass}
-                          style={{ borderColor: (!selectedAnswer && theme.accentColor === option) ? theme.accentColor : undefined }}
-                        >
-                          <div className="flex justify-between items-center gap-3">
-                            <span className={`${option === "Aucune de ces réponses" ? "italic font-medium opacity-60" : ""} flex-1`}>{option}</span>
-                            <div className="transition-transform duration-300 group-hover:scale-110">
-                              {selectedAnswer && option === correctAnswer && (
-                                <CheckCircle2 className="w-6 h-6 text-green-500 fill-green-100/20" />
-                              )}
-                              {selectedAnswer === option && option !== correctAnswer && (
-                                <XCircle className="w-6 h-6 text-red-500 fill-red-100/20" />
-                              )}
-                              {!selectedAnswer && (
-                                <div className={`w-6 h-6 rounded-full border-2 ${theme.mode === 'dark' ? 'border-gray-600' : 'border-gray-200'} group-hover:border-indigo-400`} />
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
+              <div className="grid grid-cols-1 gap-4 w-full">
+                {quizMode === 'true_false' ? (
+                  <div className="flex gap-4 w-full">
+                    {['True', 'False'].map((val) => (
+                      <button
+                        key={val}
+                        disabled={!!selectedAnswer}
+                        onClick={() => handleAnswer(val)}
+                        className={`flex-1 p-6 rounded-[2rem] font-black transition-all border-4 text-sm tracking-widest active:scale-95 flex flex-col items-center gap-2 ${
+                          selectedAnswer === null 
+                            ? (theme.mode === 'dark' ? `bg-gray-900 border-gray-700` : `bg-gray-50 border-gray-100`)
+                            : (correctAnswer === val ? `bg-green-500 border-green-500 text-white shadow-xl scale-105 z-10` : (selectedAnswer === val ? `bg-red-500 border-red-500 text-white opacity-40` : "opacity-10 border-transparent"))
+                        }`}
+                      >
+                        {val === 'True' ? <CheckCircle2 className="w-8 h-8" /> : <XCircle className="w-8 h-8" />}
+                        {val === 'True' ? 'VRAI' : 'FAUX'}
+                      </button>
+                    ))}
                   </div>
                 ) : (
-                  <div className="space-y-8 mt-4">
-                    {/* Zone de construction de la phrase */}
-                    <div className={`min-h-[120px] p-5 rounded-2xl flex flex-wrap content-start gap-2 border-2 border-dashed shadow-inner ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-                      {puzzleSelection.map((word, i) => (
-                        <motion.button
-                          layoutId={`word-${word}-${i}`}
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          key={`sel-${i}`}
-                          onClick={() => handleRemovePuzzleWord(word, i)}
-                          disabled={!!selectedAnswer}
-                          className="px-4 py-2 text-white rounded-xl shadow-lg font-bold text-sm flex items-center gap-2 transition-transform active:scale-95"
-                          style={{ backgroundColor: theme.accentColor }}
-                        >
-                          {word}
-                        </motion.button>
-                      ))}
-                      {puzzleSelection.length === 0 && (
-                        <div className="w-full h-full flex items-center justify-center opacity-30 font-medium italic text-sm">
-                          Tapez les mots ci-dessous pour construire la phrase...
-                        </div>
-                      )}
-                    </div>
+                  quizOptions.map((option, idx) => {
+                    const isCorrect = option === correctAnswer;
+                    const isSelected = option === selectedAnswer;
+                    
+                    let btnClass = "w-full p-6 rounded-[1.8rem] text-left font-black transition-all border-2 flex justify-between items-center group ";
+                    if (!selectedAnswer) {
+                      btnClass += theme.mode === 'dark' ? "bg-gray-900 border-gray-700 hover:border-indigo-500 hover:scale-[1.02]" : "bg-gray-50 border-gray-100 hover:border-indigo-500 hover:shadow-lg hover:bg-white";
+                    } else if (isCorrect) {
+                      btnClass += "bg-green-500 border-green-500 text-white shadow-xl scale-[1.03] z-10";
+                    } else if (isSelected) {
+                      btnClass += "bg-red-500 border-red-500 text-white opacity-40";
+                    } else {
+                      btnClass += "opacity-10 border-transparent";
+                    }
 
-                    {/* Zone des mots disponibles */}
-                    <div className="flex flex-wrap justify-center gap-2 mt-4">
-                      <AnimatePresence>
-                        {puzzleWords.map((word, idx) => (
-                          <motion.button
-                            layoutId={`word-${word}-${idx}-avail`}
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0, opacity: 0 }}
-                            key={`avail-${idx}`}
-                            disabled={!!selectedAnswer}
-                            onClick={() => handlePuzzleClick(word, idx)}
-                            className={`px-4 py-2 border-2 rounded-xl font-bold shadow-sm active:scale-90 transition-all ${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border-gray-100 text-gray-700 hover:bg-indigo-50'}`}
-                          >
-                            {word}
-                          </motion.button>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-
-                    {puzzleSelection.length > 0 && !selectedAnswer && (
-                      <button
-                        onClick={checkPuzzleAnswer}
-                        className="w-full py-4 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all text-sm tracking-widest uppercase"
-                        style={{ backgroundColor: theme.accentColor }}
-                      >
-                        Vérifier la réponse
+                    return (
+                      <button key={idx} disabled={!!selectedAnswer} onClick={() => handleAnswer(option)} className={btnClass}>
+                        <span className="text-sm">{option}</span>
+                        {selectedAnswer && isCorrect && <CheckCircle2 className="w-6 h-6" />}
+                        {isSelected && !isCorrect && <XCircle className="w-6 h-6" />}
                       </button>
-                    )}
-                  </div>
-                )
-              )}
+                    );
+                  })
+                )}
+              </div>
 
               {selectedAnswer && (
-                <div className="mt-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  {selectedAnswer.toLowerCase() !== correctAnswer.toLowerCase() && (
-                    <div className={`mb-6 text-sm text-left p-6 rounded-2xl border shadow-sm ${theme.mode === 'dark' ? 'bg-red-900/20 border-red-900/50 text-red-400' : 'bg-red-50 border-red-100 text-red-700'}`}>
-                      <p className="flex items-center gap-2 font-black uppercase tracking-widest text-[10px] mb-2 opacity-70">
-                        <XCircle className="w-4 h-4" /> La bonne réponse
-                      </p>
-                      <p className="text-base font-bold leading-relaxed">
-                        {quizMode === 'true_false' ? (correctAnswer === "True" ? "Vrai" : "Faux") : correctAnswer}
-                      </p>
-                      {quizMode === 'true_false' && quizTF?.explanation && (
-                        <p className="mt-2 text-xs opacity-80 italic border-t pt-2 border-red-200 dark:border-red-900/40">{quizTF.explanation}</p>
-                      )}
-                    </div>
-                  )}
-                  
-                  {selectedAnswer.toLowerCase() === correctAnswer.toLowerCase() && (
-                    <div className={`mb-6 text-sm text-left p-6 rounded-2xl border shadow-sm ${theme.mode === 'dark' ? 'bg-green-900/20 border-green-900/50 text-green-400' : 'bg-green-50 border-green-100 text-green-700'}`}>
-                        <p className="flex items-center gap-2 font-black uppercase tracking-widest text-[10px] mb-2 opacity-70">
-                          <CheckCircle2 className="w-4 h-4" /> Excellent !
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 pt-8 border-t border-gray-100 dark:border-gray-700 space-y-4">
+                   {selectedAnswer !== correctAnswer && (
+                     <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-800">
+                        <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">Correction</p>
+                        <p className="font-bold text-gray-800 dark:text-gray-200">
+                          {quizMode === 'true_false' ? (correctAnswer === 'True' ? 'Vrai' : 'Faux') : correctAnswer}
                         </p>
-                        <p className="text-base font-bold">{quizMode === 'true_false' ? "C'est tout à fait ça !" : "C'est la traduction parfaite."}</p>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={generateQuizQuestion}
-                    className="w-full text-white font-black py-5 rounded-2xl active:scale-95 transition-all shadow-lg flex items-center justify-center gap-3 text-sm tracking-widest uppercase"
-                    style={{ backgroundColor: theme.accentColor }}
-                  >
-                    Question Suivante <Gamepad2 className="w-5 h-5" />
-                  </button>
-                </div>
+                     </div>
+                   )}
+                   <button
+                     onClick={generateQuizQuestion}
+                     className="w-full text-white font-black py-6 rounded-[2rem] active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-3 text-xs tracking-[0.2em] uppercase"
+                     style={{ backgroundColor: theme.accentColor }}
+                   >
+                     QUESTION SUIVANTE <ChevronRight className="w-5 h-5" />
+                   </button>
+                </motion.div>
               )}
             </div>
           </div>
@@ -911,67 +877,6 @@ export default function App() {
                 </div>
               </div>
             )}
-          </div>
-        )}
-        {currentTab === 'chat' && (
-          <div className="max-w-2xl mx-auto w-full flex flex-col h-[calc(100vh-180px)] pt-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: theme.accentColor }}>
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl font-black">IBKane IA</h2>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">En ligne • Assistant Éducatif</span>
-                </div>
-              </div>
-            </div>
-
-            <div className={`flex-1 overflow-y-auto p-4 rounded-3xl border shadow-inner mb-4 space-y-4 ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-gray-100 border-gray-200'}`}>
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                    msg.role === 'user' 
-                      ? 'bg-indigo-600 text-white rounded-tr-none' 
-                      : (theme.mode === 'dark' ? 'bg-gray-800 text-gray-200 rounded-tl-none' : 'bg-white text-gray-800 rounded-tl-none')
-                  }`}>
-                    {msg.parts[0].text}
-                  </div>
-                </div>
-              ))}
-              {isChatLoading && (
-                <div className="flex justify-start">
-                  <div className={`p-4 rounded-2xl rounded-tl-none shadow-sm ${theme.mode === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
-                    <Loader2 className="w-5 h-5 animate-spin opacity-50" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="relative">
-              <input 
-                type="text" 
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Pose une question en anglais ou français..."
-                className={`w-full p-4 pr-14 rounded-2xl border-2 focus:outline-none transition-all ${
-                  theme.mode === 'dark' ? 'bg-gray-800 border-gray-700 focus:border-indigo-500 text-white' : 'bg-white border-gray-100 focus:border-indigo-500'
-                }`}
-              />
-              <button 
-                onClick={handleSendMessage}
-                disabled={isChatLoading || !chatInput.trim()}
-                className="absolute right-2 top-2 p-3 text-white rounded-xl shadow-lg active:scale-90 transition-all disabled:opacity-50"
-                style={{ backgroundColor: theme.accentColor }}
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </div>
-            <p className="text-[10px] text-center text-gray-400 mt-2">
-              L'IA peut faire des erreurs. Idéal pour pratiquer les dialogues et demander des traductions.
-            </p>
           </div>
         )}
         {currentTab === 'multiplayer' && (
@@ -1219,14 +1124,6 @@ export default function App() {
           >
             <Users className={`w-6 h-6 mb-1 ${currentTab === 'multiplayer' ? 'stroke-[2.5px]' : ''}`} />
             <span className="text-[10px] font-medium">Défis</span>
-          </button>
-          <button
-            onClick={() => setCurrentTab('chat')}
-            className={`flex flex-col items-center p-2 w-16 transition-colors ${currentTab === 'chat' ? '' : 'text-gray-400'}`}
-            style={{ color: currentTab === 'chat' ? theme.accentColor : undefined }}
-          >
-            <MessageSquare className={`w-6 h-6 mb-1 ${currentTab === 'chat' ? 'stroke-[2.5px]' : ''}`} />
-            <span className="text-[10px] font-medium">Chat</span>
           </button>
           <button
             onClick={() => setCurrentTab('profile')}
