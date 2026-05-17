@@ -227,20 +227,39 @@ export default function App() {
 
   const generateQuizQuestion = () => {
     const NONE_OF_THE_ABOVE = "Aucune de ces réponses";
+    setSelectedAnswer(null);
 
     if (quizMode === 'true_false') {
       const randomTF = trueFalseData[Math.floor(Math.random() * trueFalseData.length)];
       setQuizTF(randomTF);
       setCorrectAnswer(randomTF.isTrue ? "True" : "False");
-      setSelectedAnswer(null);
       return;
     }
 
-    // MODE PHRASES UNIQUEMENT
+    if (quizMode === 'mots') {
+      if (allWords.length < 5) return;
+      const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
+      setQuizWord(randomWord);
+      
+      const wrongOptions = new Set<string>();
+      while (wrongOptions.size < 3) {
+        const option = allWords[Math.floor(Math.random() * allWords.length)].french;
+        if (option !== randomWord.french) {
+          wrongOptions.add(option);
+        }
+      }
+      
+      const options = Array.from(wrongOptions);
+      options.push(randomWord.french);
+      setQuizOptions(options.sort(() => Math.random() - 0.5));
+      setCorrectAnswer(randomWord.french);
+      return;
+    }
+
+    // MODE PHRASES
     if (sentenceData.length < 5) return;
     const randomSentence = sentenceData[Math.floor(Math.random() * sentenceData.length)];
     setQuizSentence(randomSentence);
-    setSelectedAnswer(null);
 
     if (phraseGameType === 'translation') {
       const isCorrectAnswerHidden = Math.random() < 0.25;
