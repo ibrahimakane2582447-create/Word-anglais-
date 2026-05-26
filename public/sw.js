@@ -49,3 +49,69 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+
+// Gérer le clic sur la notification pour remettre l'application au premier plan
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      if (clientList.length > 0) {
+        return clientList[0].focus();
+      }
+      return clients.openWindow('/');
+    })
+  );
+});
+
+// Stocker le timeout de notification en arrière-plan
+let vocabNotificationTimeout = null;
+
+// Écouter les messages du client React pour déclencher et planifier les notifications
+self.addEventListener('message', event => {
+  if (!event.data) return;
+
+  // Déclencher immédiatement
+  if (event.data.type === 'TRIGGER_NOTIFICATION') {
+    self.registration.showNotification(event.data.title, {
+      body: event.data.body,
+      icon: '/icon.svg',
+      badge: '/icon.svg',
+      vibrate: [150, 100, 150],
+      tag: 'vocab-reminder',
+      renotify: true,
+      data: {
+        url: '/'
+      }
+    });
+  }
+  
+  // Planifier une notification d'inactivité (ex: 24h après)
+  if (event.data.type === 'SCHEDULE_INACTIVE_NOTIFICATION') {
+    if (vocabNotificationTimeout) {
+      clearTimeout(vocabNotificationTimeout);
+    }
+    const delay = event.data.delay || 86400000; // Par défaut 24h (en ms)
+    
+    vocabNotificationTimeout = setTimeout(() => {
+      self.registration.showNotification(event.data.title, {
+        body: event.data.body,
+        icon: '/icon.svg',
+        badge: '/icon.svg',
+        vibrate: [200, 100, 200],
+        tag: 'vocab-inactive-reminder',
+        renotify: true,
+        data: {
+          url: '/'
+        }
+      });
+    }, delay);
+  }
+  
+  // Annuler la notification planifiée (quand l'utilisateur revient sur l'application)
+  if (event.data.type === 'CANCEL_NOTIFICATION') {
+    if (vocabNotificationTimeout) {
+      clearTimeout(vocabNotificationTimeout);
+      vocabNotificationTimeout = null;
+    }
+  }
+});

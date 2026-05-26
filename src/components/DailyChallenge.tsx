@@ -130,10 +130,10 @@ export default function DailyChallenge({ theme, allWords, onStatsUpdate }: Daily
 
     if (isCorrect) {
       setQuizScore(prev => prev + 1);
-      sounds.playCorrect();
-    } else {
-      sounds.playIncorrect();
     }
+    
+    // Play neutral selection sound so players don't know the result immediately
+    sounds.playCreate();
 
     setQuizAnswers(prev => ({
       ...prev,
@@ -352,23 +352,20 @@ export default function DailyChallenge({ theme, allWords, onStatsUpdate }: Daily
               <h4 className="text-3xl font-black text-indigo-600 dark:text-white mt-1">{dailyWords[currentWordIdx].english}</h4>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
+             <div className="grid grid-cols-1 gap-3">
               {quizOptions.map((opt, i) => {
                 const targetWord = dailyWords[currentWordIdx];
                 const isSelected = selectedOpt === opt;
-                const isCorrect = opt === targetWord.french;
 
                 let btnClass = "w-full p-4 rounded-2xl font-bold text-left text-xs transition-colors border-2 flex justify-between items-center ";
                 if (selectedOpt === null) {
                   btnClass += theme.mode === 'dark' 
                     ? 'bg-gray-900 border-gray-700 hover:border-indigo-500' 
                     : 'bg-gray-50 border-gray-100 hover:border-indigo-500';
-                } else if (isCorrect) {
-                  btnClass += 'bg-green-500 border-green-500 text-white font-black';
                 } else if (isSelected) {
-                  btnClass += 'bg-red-500 border-red-500 text-white opacity-85';
+                  btnClass += 'bg-indigo-600 border-indigo-600 text-white scale-[1.01] shadow-lg';
                 } else {
-                  btnClass += 'opacity-20 border-transparent';
+                  btnClass += 'opacity-40 border-transparent';
                 }
 
                 return (
@@ -379,8 +376,7 @@ export default function DailyChallenge({ theme, allWords, onStatsUpdate }: Daily
                     className={btnClass}
                   >
                     <span>{opt}</span>
-                    {selectedOpt && isCorrect && <CheckCircle2 className="w-4 h-4" />}
-                    {isSelected && !isCorrect && <XCircle className="w-4 h-4" />}
+                    {/* Hiding correct/incorrect checkmarks in real-time */}
                   </button>
                 );
               })}
@@ -412,18 +408,42 @@ export default function DailyChallenge({ theme, allWords, onStatsUpdate }: Daily
 
             {/* Daily words summary with correction */}
             <div className="bg-gray-50 dark:bg-gray-900/60 p-4 rounded-3xl text-left border border-gray-100 dark:border-gray-800 space-y-3 max-h-56 overflow-y-auto no-scrollbar">
-              <span className="text-[9px] font-black uppercase tracking-widest opacity-40 block">Vocabulaire appris aujourd'hui:</span>
-              {dailyWords.map((word, index) => (
-                <div key={index} className="flex justify-between items-center text-[11px] py-1 border-b border-gray-100 dark:border-gray-800 last:border-none">
-                  <div>
-                    <span className="font-bold block">{word.english}</span>
-                    <span className="text-[10px] opacity-50 italic">"{word.exampleEn}"</span>
+              <span className="text-[9px] font-black uppercase tracking-widest opacity-40 block">Détails des questions & Corrections :</span>
+              {dailyWords.map((word, index) => {
+                const answerInfo = quizAnswers[index];
+                const wasCorrect = answerInfo ? answerInfo.isCorrect : true;
+                const hasAnswered = !!answerInfo;
+
+                return (
+                  <div key={index} className="p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-150 dark:border-gray-700/50 space-y-1.5 text-[11px]">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-indigo-500">{word.english}</span>
+                      {hasAnswered && (
+                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${wasCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                          {wasCorrect ? 'Correct ✓' : 'Incorrect ✗'}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <p className="text-[10px] opacity-60 italic leading-relaxed">
+                      "{word.exampleEn}"
+                    </p>
+
+                    <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/70 text-[10px] space-y-1">
+                      <div>
+                        <span className="font-bold text-gray-400">Traduction correcte :</span>{' '}
+                        <span className="font-bold text-green-500">{word.french}</span>
+                      </div>
+                      {hasAnswered && !wasCorrect && (
+                        <div>
+                          <span className="font-bold text-gray-400">Votre réponse :</span>{' '}
+                          <span className="font-bold text-red-500">{answerInfo.selected}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="font-extrabold text-indigo-500 block">{word.french}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <button

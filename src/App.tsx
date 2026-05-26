@@ -74,6 +74,95 @@ export default function App() {
     localStorage.setItem('vocab-theme', JSON.stringify(theme));
   }, [theme]);
 
+  // --- CHRONOS PHONE NOTIFICATION ORCHESTRATION ---
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+  );
+  const [dailyNotificationsEnabled, setDailyNotificationsEnabled] = useState(() => {
+    return localStorage.getItem('vocab-enable-daily-notifications') !== 'false';
+  });
+  const [demoDelayMode, setDemoDelayMode] = useState<'daily' | '10sec'>(() => {
+    return (localStorage.getItem('vocab-demo-delay') as 'daily' | '10sec') || 'daily';
+  });
+
+  const requestNotificationPermission = () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      Notification.requestPermission().then(perm => {
+        setNotifPermission(perm);
+        if (perm === 'granted') {
+          sendTestPushNow();
+        }
+      });
+    }
+  };
+
+  const sendTestPushNow = () => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        if (reg.active) {
+          reg.active.postMessage({
+            type: 'TRIGGER_NOTIFICATION',
+            title: "🔔 Rappel Ibrahima Vocab Activé !",
+            body: `Excellent, ${userName} ! Vous recevrez des notifications d'inactivité directement sur votre téléphone.`
+          });
+        }
+      });
+    }
+  };
+
+  useEffect(() => {
+    localStorage.setItem('vocab-enable-daily-notifications', String(dailyNotificationsEnabled));
+  }, [dailyNotificationsEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('vocab-demo-delay', demoDelayMode);
+  }, [demoDelayMode]);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    // Réinitialiser tout rappel programmatique puisque l'utilisateur examine activement l'application
+    const cancelScheduledReminder = () => {
+      navigator.serviceWorker.ready.then(reg => {
+        if (reg.active) {
+          reg.active.postMessage({ type: 'CANCEL_NOTIFICATION' });
+        }
+      });
+    };
+
+    cancelScheduledReminder();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // L'utilisateur ferme ou minimise l'application !
+        if (dailyNotificationsEnabled && notifPermission === 'granted') {
+          const delayInMs = demoDelayMode === '10sec' ? 10 * 1000 : 24 * 60 * 60 * 1000;
+          const label = demoDelayMode === '10sec' ? "Démonstration (10s)" : "Rappel quotidien (24h)";
+          
+          navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+              reg.active.postMessage({
+                type: 'SCHEDULE_INACTIVE_NOTIFICATION',
+                title: "🔥 Votre série est en danger !",
+                body: `Salut ${userName} ! Vous n'avez pas révisé vos mots complexes aujourd'hui. Venez faire le défi quotidien ! 📚`,
+                delay: delayInMs
+              });
+              console.log(`[Notification Service] Programmation d'un rappel d'inactivité sous ${label}`);
+            }
+          });
+        }
+      } else {
+        // Retour de l'utilisateur actif : annuler tout rappel d'inactivité
+        cancelScheduledReminder();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [dailyNotificationsEnabled, notifPermission, demoDelayMode, userName]);
+
   // --- NOTIFICATION SYSTEM & STATS BONUS ---
   const [activeNotification, setActiveNotification] = useState<{ id: string, title: string, text: string, tab: Tab } | null>(null);
 
@@ -1120,6 +1209,92 @@ export default function App() {
                   <span className="font-bold text-sm">{isOffline ? 'Mode Hors Ligne' : 'Connecté'}</span>
                 </div>
                 <div className="text-[10px] uppercase font-black tracking-widest opacity-40">Statut</div>
+              </div>
+
+              {/* Rappels & Notifications Système */}
+              <div className="space-y-4 border-t border-gray-100 dark:border-gray-700/60 pt-6">
+                <h3 className="text-sm font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
+                  <Bell className="w-4 h-4" /> Rappels & Notifications
+                </h3>
+
+                <p className="text-[10px] opacity-75 leading-relaxed">
+                  Recevez un rappel quotidien directement dans la barre de notifications de votre téléphone si vous n'avez pas ouvert l'application de la journée.
+                </p>
+
+                {notifPermission !== 'granted' ? (
+                  <div className="p-4 bg-amber-500/10 dark:bg-amber-500/5 text-amber-600 dark:text-amber-400 border border-amber-500/25 rounded-2xl space-y-3">
+                    <p className="text-[10px] font-bold leading-relaxed">
+                      ⚠️ Les notifications système ne sont pas encore autorisées dans votre navigateur pour cette application.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={requestNotificationPermission}
+                      className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white font-black text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-md active:scale-95"
+                    >
+                      AUTORISER SUR LE TÉLÉPHONE 🔔
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3.5 bg-green-500/10 dark:bg-green-500/5 text-green-600 dark:text-green-400 border border-green-500/20 rounded-2xl">
+                      <div className="text-[10px] font-bold">
+                        ✓ Notifications système actives dans votre barre d'état
+                      </div>
+                      <button
+                        type="button"
+                        onClick={sendTestPushNow}
+                        className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-[8.5px] font-black rounded-lg uppercase tracking-wider transition-all shrink-0 ml-2"
+                      >
+                        TESTER ⚡
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                      <span className="text-xs font-bold opacity-80">Rappels quotidiens d'inactivité</span>
+                      <button
+                        type="button"
+                        onClick={() => setDailyNotificationsEnabled(!dailyNotificationsEnabled)}
+                        className={`w-12 h-6 rounded-full flex items-center p-1 transition-colors duration-300 ${dailyNotificationsEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                      >
+                        <motion.div
+                          layout
+                          className="w-4 h-4 bg-white rounded-full shadow-md"
+                          animate={{ translateX: dailyNotificationsEnabled ? 24 : 0 }}
+                        />
+                      </button>
+                    </div>
+
+                    {dailyNotificationsEnabled && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold opacity-60 ml-0.5 block">Délai avant rappel d'inactivité :</label>
+                        <div className="flex gap-2 p-1 bg-gray-100/50 dark:bg-gray-900/50 rounded-2xl">
+                          <button
+                            type="button"
+                            onClick={() => setDemoDelayMode('daily')}
+                            className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${demoDelayMode === 'daily' ? 'text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                            style={{ backgroundColor: demoDelayMode === 'daily' ? theme.accentColor : undefined }}
+                          >
+                            Quotidien (24h)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDemoDelayMode('10sec')}
+                            className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${demoDelayMode === '10sec' ? 'text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                            style={{ backgroundColor: demoDelayMode === '10sec' ? theme.accentColor : undefined }}
+                          >
+                            Démo (10 secondes)
+                          </button>
+                        </div>
+                        <p className="text-[9px] opacity-60 italic mt-1 leading-normal">
+                          {demoDelayMode === '10sec' 
+                            ? "💡 Mode démo : Minimisez/quittez l'application (mettez l'onglet en arrière-plan ou verrouillez l'écran) et attendez 10 secondes pour voir la notification système apparaître dans la barre de votre téléphone !"
+                            : "📅 Mode réel : Vous serez relancé automatiquement si l'application reste inactive pendant plus de 24h."
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Mode Sombre/Clair */}
