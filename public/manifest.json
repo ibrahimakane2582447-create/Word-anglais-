@@ -1,7 +1,7 @@
 {
-  "name": "VocabAnglais - Ibrahima Kane",
-  "short_name": "VocabAnglais",
-  "description": "Apprendre l'anglais avec Ibrahima Kane",
+  "name": "English vocabulary school",
+  "short_name": "VocabSchool",
+  "description": "Apprendre l'anglais facilement avec English vocabulary school",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#4f46e5",

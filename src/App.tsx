@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Search, BookOpen, Heart, Gamepad2, List, CheckCircle2, XCircle, Flame, PlusCircle, Save, Settings, Image as ImageIcon, Palette, Sun, Moon, MessageSquare, Send, User, Loader2, Users, Zap, BrainCircuit, Type, ChevronRight, MessageSquareText } from 'lucide-react';
+import { Bell, Search, BookOpen, Heart, Gamepad2, List, CheckCircle2, XCircle, Flame, PlusCircle, Save, Settings, Image as ImageIcon, Palette, Sun, Moon, MessageSquare, Send, User, Loader2, Users, Zap, Type, ChevronRight, MessageSquareText } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { vocabularyData, WordEntry, sentenceData, SentenceEntry, trueFalseData, TrueFalseEntry } from './data';
+import { vocabularyData, WordEntry, sentenceData, SentenceEntry } from './data';
 import MultiplayerGame from './components/MultiplayerGame';
 import DailyChallenge from './components/DailyChallenge';
 import { sounds } from './lib/sounds';
@@ -10,7 +10,7 @@ import { sounds } from './lib/sounds';
 import { getLevenshteinDistance, findBestMatches } from './lib/searchUtils';
 
 type Tab = 'dict' | 'fav' | 'quiz' | 'add' | 'settings' | 'profile' | 'multiplayer';
-type QuizMode = 'mots' | 'phrases' | 'true_false';
+type QuizMode = 'mots' | 'phrases';
 type PhraseGameType = 'translation' | 'puzzle';
 
 export interface ThemeConfig {
@@ -102,7 +102,7 @@ export default function App() {
         if (reg.active) {
           reg.active.postMessage({
             type: 'TRIGGER_NOTIFICATION',
-            title: "🔔 Rappel Ibrahima Vocab Activé !",
+            title: "🔔 English vocabulary school !",
             body: `Excellent, ${userName} ! Vous recevrez des notifications d'inactivité directement sur votre téléphone.`
           });
         }
@@ -348,7 +348,6 @@ export default function App() {
   const [quizMode, setQuizMode] = useState<QuizMode>('phrases');
   const [quizWord, setQuizWord] = useState<WordEntry | null>(null);
   const [quizSentence, setQuizSentence] = useState<SentenceEntry | null>(null);
-  const [quizTF, setQuizTF] = useState<TrueFalseEntry | null>(null);
   const [puzzleWords, setPuzzleWords] = useState<string[]>([]);
   const [puzzleSelection, setPuzzleSelection] = useState<string[]>([]);
   const [quizOptions, setQuizOptions] = useState<string[]>([]);
@@ -357,17 +356,10 @@ export default function App() {
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [streak, setStreak] = useState(0);
 
-  const generateQuizQuestion = (forcedMode?: 'mots' | 'phrases' | 'true_false') => {
+  const generateQuizQuestion = (forcedMode?: 'mots' | 'phrases') => {
     const NONE_OF_THE_ABOVE = "Aucune de ces réponses";
     setSelectedAnswer(null);
     const mode = forcedMode || quizMode;
-
-    if (mode === 'true_false') {
-      const randomTF = trueFalseData[Math.floor(Math.random() * trueFalseData.length)];
-      setQuizTF(randomTF);
-      setCorrectAnswer(randomTF.isTrue ? "True" : "False");
-      return;
-    }
 
     if (mode === 'mots') {
       if (allWords.length < 5) return;
@@ -678,8 +670,8 @@ export default function App() {
                   📚
                 </motion.span>
               </div>
-              <h2 className="text-4xl font-black mb-2 tracking-tight">Bienvenue</h2>
-              <p className="text-2xl font-bold opacity-90">Ibrahima Kane</p>
+              <h2 className="text-4xl font-black mb-2 tracking-tight">English</h2>
+              <p className="text-2xl font-bold opacity-90">vocabulary school</p>
               <div className="mt-6 flex justify-center">
                 <motion.div
                   animate={{ scaleX: [0, 1] }}
@@ -709,7 +701,7 @@ export default function App() {
             <div className="p-1.5 bg-white/20 rounded-lg">
               <Zap className="w-4 h-4" />
             </div>
-            <h1 className="text-sm font-black tracking-tighter uppercase">Ibrahima Vocab</h1>
+            <h1 className="text-sm font-black tracking-tighter uppercase">English vocabulary school</h1>
           </div>
           <button 
             onClick={() => setCurrentTab('profile')}
@@ -867,8 +859,7 @@ export default function App() {
             <div className={`flex p-1.5 rounded-3xl w-full shadow-inner border transition-colors ${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
               {[
                 { id: 'mots', icon: Type, label: 'Mots' },
-                { id: 'phrases', icon: MessageSquareText, label: 'Phrases' },
-                { id: 'true_false', icon: BrainCircuit, label: 'Vrai/Faux' }
+                { id: 'phrases', icon: MessageSquareText, label: 'Phrases' }
               ].map((m) => (
                 <button
                   key={m.id}
@@ -895,7 +886,7 @@ export default function App() {
               )}
               
               <div className="flex justify-between items-center mb-6">
-                <div className="text-[9px] font-black uppercase opacity-20 tracking-tighter">Ibrahima Kane Quiz</div>
+                <div className="text-[9px] font-black uppercase opacity-20 tracking-tighter">Vocab School Quiz</div>
                 <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black tracking-widest uppercase border-2 ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700 text-gray-400' : 'bg-indigo-50 border-indigo-100 text-indigo-600'}`}>
                    SCORE: {score.correct}/{score.total}
                 </span>
@@ -903,59 +894,38 @@ export default function App() {
               
               <div className="mb-8">
                 <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mb-4 opacity-40">
-                  {quizMode === 'true_false' ? "Affirmation Vrai ou Faux" : "Traduisez cette expression"}
+                  Traduisez cette expression
                 </h3>
                 <div className={`text-xl font-black leading-snug p-8 rounded-[2rem] ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-indigo-50 text-indigo-900 shadow-inner border border-indigo-100/30'}`}>
                   {quizMode === 'mots' && quizWord?.english}
                   {quizMode === 'phrases' && quizSentence?.english}
-                  {quizMode === 'true_false' && quizTF?.statement}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 w-full">
-                {quizMode === 'true_false' ? (
-                  <div className="flex gap-4 w-full">
-                    {['True', 'False'].map((val) => (
-                      <button
-                        key={val}
-                        disabled={!!selectedAnswer}
-                        onClick={() => handleAnswer(val)}
-                        className={`flex-1 p-6 rounded-[2rem] font-black transition-all border-4 text-sm tracking-widest active:scale-95 flex flex-col items-center gap-2 ${
-                          selectedAnswer === null 
-                            ? (theme.mode === 'dark' ? `bg-gray-900 border-gray-700` : `bg-gray-50 border-gray-100`)
-                            : (correctAnswer === val ? `bg-green-500 border-green-500 text-white shadow-xl scale-105 z-10` : (selectedAnswer === val ? `bg-red-500 border-red-500 text-white opacity-40` : "opacity-10 border-transparent"))
-                        }`}
-                      >
-                        {val === 'True' ? <CheckCircle2 className="w-8 h-8" /> : <XCircle className="w-8 h-8" />}
-                        {val === 'True' ? 'VRAI' : 'FAUX'}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  quizOptions.map((option, idx) => {
-                    const isCorrect = option === correctAnswer;
-                    const isSelected = option === selectedAnswer;
-                    
-                    let btnClass = "w-full p-6 rounded-[1.8rem] text-left font-black transition-all border-2 flex justify-between items-center group ";
-                    if (!selectedAnswer) {
-                      btnClass += theme.mode === 'dark' ? "bg-gray-900 border-gray-700 hover:border-indigo-500 hover:scale-[1.02]" : "bg-gray-50 border-gray-100 hover:border-indigo-500 hover:shadow-lg hover:bg-white";
-                    } else if (isCorrect) {
-                      btnClass += "bg-green-500 border-green-500 text-white shadow-xl scale-[1.03] z-10";
-                    } else if (isSelected) {
-                      btnClass += "bg-red-500 border-red-500 text-white opacity-40";
-                    } else {
-                      btnClass += "opacity-10 border-transparent";
-                    }
+                {quizOptions.map((option, idx) => {
+                  const isCorrect = option === correctAnswer;
+                  const isSelected = option === selectedAnswer;
+                  
+                  let btnClass = "w-full p-6 rounded-[1.8rem] text-left font-black transition-all border-2 flex justify-between items-center group ";
+                  if (!selectedAnswer) {
+                    btnClass += theme.mode === 'dark' ? "bg-gray-900 border-gray-700 hover:border-indigo-500 hover:scale-[1.02]" : "bg-gray-50 border-gray-100 hover:border-indigo-500 hover:shadow-lg hover:bg-white";
+                  } else if (isCorrect) {
+                    btnClass += "bg-green-500 border-green-500 text-white shadow-xl scale-[1.03] z-10";
+                  } else if (isSelected) {
+                    btnClass += "bg-red-500 border-red-500 text-white opacity-40";
+                  } else {
+                    btnClass += "opacity-10 border-transparent";
+                  }
 
-                    return (
-                      <button key={idx} disabled={!!selectedAnswer} onClick={() => handleAnswer(option)} className={btnClass}>
-                        <span className="text-sm">{option}</span>
-                        {selectedAnswer && isCorrect && <CheckCircle2 className="w-6 h-6" />}
-                        {isSelected && !isCorrect && <XCircle className="w-6 h-6" />}
-                      </button>
-                    );
-                  })
-                )}
+                  return (
+                    <button key={idx} disabled={!!selectedAnswer} onClick={() => handleAnswer(option)} className={btnClass}>
+                      <span className="text-sm">{option}</span>
+                      {selectedAnswer && isCorrect && <CheckCircle2 className="w-6 h-6" />}
+                      {isSelected && !isCorrect && <XCircle className="w-6 h-6" />}
+                    </button>
+                  );
+                })}
               </div>
 
               {selectedAnswer && (
@@ -964,12 +934,12 @@ export default function App() {
                      <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-800">
                         <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">Correction</p>
                         <p className="font-bold text-gray-800 dark:text-gray-200">
-                          {quizMode === 'true_false' ? (correctAnswer === 'True' ? 'Vrai' : 'Faux') : correctAnswer}
+                          {correctAnswer}
                         </p>
                      </div>
                    )}
                    <button
-                     onClick={generateQuizQuestion}
+                     onClick={() => generateQuizQuestion()}
                      className="w-full text-white font-black py-6 rounded-[2rem] active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-3 text-xs tracking-[0.2em] uppercase"
                      style={{ backgroundColor: theme.accentColor }}
                    >
