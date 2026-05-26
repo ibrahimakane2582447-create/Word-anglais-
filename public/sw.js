@@ -74,8 +74,8 @@ self.addEventListener('message', event => {
   if (event.data.type === 'TRIGGER_NOTIFICATION') {
     self.registration.showNotification(event.data.title, {
       body: event.data.body,
-      icon: '/icon.svg',
-      badge: '/icon.svg',
+      icon: '/icon.png',
+      badge: '/icon.png',
       vibrate: [150, 100, 150],
       tag: 'vocab-reminder',
       renotify: true,
@@ -95,8 +95,8 @@ self.addEventListener('message', event => {
     vocabNotificationTimeout = setTimeout(() => {
       self.registration.showNotification(event.data.title, {
         body: event.data.body,
-        icon: '/icon.svg',
-        badge: '/icon.svg',
+        icon: '/icon.png',
+        badge: '/icon.png',
         vibrate: [200, 100, 200],
         tag: 'vocab-inactive-reminder',
         renotify: true,
