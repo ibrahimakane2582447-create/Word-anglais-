@@ -4,6 +4,7 @@ import { Bell, Search, BookOpen, Heart, Gamepad2, List, CheckCircle2, XCircle, F
 import confetti from 'canvas-confetti';
 import { vocabularyData, WordEntry, sentenceData, SentenceEntry, trueFalseData, TrueFalseEntry } from './data';
 import MultiplayerGame from './components/MultiplayerGame';
+import DailyChallenge from './components/DailyChallenge';
 import { sounds } from './lib/sounds';
 
 import { getLevenshteinDistance, findBestMatches } from './lib/searchUtils';
@@ -72,6 +73,48 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('vocab-theme', JSON.stringify(theme));
   }, [theme]);
+
+  // --- NOTIFICATION SYSTEM & STATS BONUS ---
+  const [activeNotification, setActiveNotification] = useState<{ id: string, title: string, text: string, tab: Tab } | null>(null);
+
+  const handleStatsBonus = (bonusPoints: number) => {
+    setUserStats(prev => ({
+      ...prev,
+      totalCorrect: prev.totalCorrect + bonusPoints,
+      totalAttempted: prev.totalAttempted + bonusPoints
+    }));
+  };
+
+  useEffect(() => {
+    const notificationPhrases = [
+      { id: 'n1', title: '⏱️ C\'est l\'heure de jouer !', text: 'Viens affronter un ami en Duel Local dans l\'onglet Défis !', tab: 'multiplayer' as Tab },
+      { id: 'n2', title: '🎯 Défi du Jour disponible !', text: '5 mots complexes t\'attendent aujourd\'hui dans l\'onglet dictionnaire !', tab: 'dict' as Tab },
+      { id: 'n3', title: '💡 Une révision rapide ?', text: 'Entraîne-toi sur le Quiz de phrases pour pulvériser ta série !', tab: 'quiz' as Tab },
+      { id: 'n4', title: '🔥 Conserve ta série !', text: 'Viens tester tes connaissances maintenant pour ne pas perdre ta routine.', tab: 'quiz' as Tab },
+      { id: 'n5', title: '💖 Rapproche-toi de la maîtrise !', text: 'Examine tes mots favoris et révise les expressions clés !', tab: 'fav' as Tab }
+    ];
+
+    const showRandomNotification = () => {
+      const unused = notificationPhrases.filter(n => n.id !== activeNotification?.id);
+      const chosen = unused[Math.floor(Math.random() * unused.length)];
+      setActiveNotification(chosen);
+      sounds.playCreate();
+
+      // Auto-hide after 8 seconds
+      setTimeout(() => {
+        setActiveNotification(p => p?.id === chosen.id ? null : p);
+      }, 8000);
+    };
+
+    // First notification after 15 seconds, then every 30 seconds
+    const initialTimer = setTimeout(showRandomNotification, 15000);
+    const intervalTimer = setInterval(showRandomNotification, 30000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+    };
+  }, [activeNotification]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -225,18 +268,19 @@ export default function App() {
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [streak, setStreak] = useState(0);
 
-  const generateQuizQuestion = () => {
+  const generateQuizQuestion = (forcedMode?: 'mots' | 'phrases' | 'true_false') => {
     const NONE_OF_THE_ABOVE = "Aucune de ces réponses";
     setSelectedAnswer(null);
+    const mode = forcedMode || quizMode;
 
-    if (quizMode === 'true_false') {
+    if (mode === 'true_false') {
       const randomTF = trueFalseData[Math.floor(Math.random() * trueFalseData.length)];
       setQuizTF(randomTF);
       setCorrectAnswer(randomTF.isTrue ? "True" : "False");
       return;
     }
 
-    if (quizMode === 'mots') {
+    if (mode === 'mots') {
       if (allWords.length < 5) return;
       const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
       setQuizWord(randomWord);
@@ -400,50 +444,62 @@ export default function App() {
 
   // --- RENDU DES CARTES DE MOTS ---
   const renderWordCard = (word: WordEntry) => (
-    <div key={word.id} className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-2xl shadow-sm border overflow-hidden active:scale-[0.98] transition-transform`}>
-      <div className="p-5">
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <h2 className={`text-2xl font-bold flex items-center gap-2 ${theme.mode === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+    <motion.div 
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      key={word.id} 
+      className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-[2rem] shadow-sm border overflow-hidden transition-all hover:shadow-md group`}
+    >
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+               <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${theme.mode === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-50 text-gray-400'}`}>
+                {word.type}
+              </span>
+            </div>
+            <h2 className={`text-2xl font-black flex items-center gap-2 tracking-tight ${theme.mode === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
               {word.english}
             </h2>
-            <p className="font-medium text-lg mt-0.5" style={{ color: theme.accentColor }}>{word.french}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="h-px w-4 bg-indigo-200" />
+              <p className="font-black text-lg" style={{ color: theme.accentColor }}>{word.french}</p>
+            </div>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             <button
               onClick={() => toggleFavorite(word.id)}
-              className={`p-3 rounded-full transition-colors shadow-sm ${
-                favorites.has(word.id) ? 'bg-red-50 text-red-500' : (theme.mode === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-50 text-gray-400 hover:bg-gray-100')
+              className={`p-3 rounded-2xl transition-all active:scale-90 shadow-sm ${
+                favorites.has(word.id) ? 'bg-red-50 text-red-500 scale-110' : (theme.mode === 'dark' ? 'bg-gray-700 text-gray-400 hover:text-red-400' : 'bg-gray-50 text-gray-300 hover:text-red-400 hover:bg-red-50')
               }`}
             >
-              <Heart className="w-6 h-6" fill={favorites.has(word.id) ? "currentColor" : "none"} />
+              <Heart className="w-5 h-5" fill={favorites.has(word.id) ? "currentColor" : "none"} />
             </button>
             <button
-              onClick={() => speakWord(word.english)}
-              className="p-3 rounded-full transition-colors shadow-sm"
-              style={{ backgroundColor: `${theme.accentColor}20`, color: theme.accentColor }}
-            >
-              <Bell className="w-6 h-6" />
-            </button>
+                onClick={() => speakWord(word.english)}
+                className="p-3 rounded-2xl transition-all active:scale-90 shadow-sm group-hover:bg-indigo-600 group-hover:text-white"
+                style={{ backgroundColor: `${theme.accentColor}10`, color: theme.accentColor }}
+              >
+                <Bell className="w-5 h-5" />
+              </button>
           </div>
         </div>
         
-        <div className={`inline-block px-2 py-1 text-xs font-semibold rounded-md mb-4 ${theme.mode === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
-          {word.type}
-        </div>
-
-        <div className={`space-y-3 p-4 rounded-xl border ${theme.mode === 'dark' ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
-          <div>
-            <p className={`text-sm font-medium italic ${theme.mode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>"{word.exampleEn}"</p>
+        <div className={`space-y-3 p-5 rounded-[1.5rem] border-2 border-dashed ${theme.mode === 'dark' ? 'bg-gray-900/50 border-gray-700' : 'bg-indigo-50/30 border-indigo-100/50'}`}>
+          <div className="flex gap-3">
+             <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center text-[10px] font-black shadow-sm flex-shrink-0">EN</div>
+             <p className={`text-sm font-bold tracking-tight leading-relaxed ${theme.mode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{word.exampleEn}</p>
           </div>
-          <div className={`h-px w-full ${theme.mode === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
-          <div>
-            <p className={`text-sm ${theme.mode === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>"{word.exampleFr}"</p>
+          <div className="flex gap-3">
+             <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-black text-white shadow-sm flex-shrink-0">FR</div>
+             <p className={`text-sm font-medium leading-relaxed ${theme.mode === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{word.exampleFr}</p>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 
   return (
@@ -462,6 +518,42 @@ export default function App() {
       {theme.backgroundImage && (
         <div className={`fixed inset-0 pointer-events-none ${theme.mode === 'dark' ? 'bg-black/60' : 'bg-white/40'}`} />
       )}
+
+      {/* Real-time Push Notifications Simulator */}
+      <AnimatePresence>
+        {activeNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 16, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-4 left-4 right-4 z-[110] max-w-sm mx-auto p-4 bg-indigo-600 text-white rounded-3xl shadow-2xl flex items-start gap-3 border border-indigo-500 hover:scale-[1.01] active:scale-[0.99] transition-transform cursor-pointer"
+            onClick={() => {
+              setCurrentTab(activeNotification.tab);
+              setActiveNotification(null);
+            }}
+          >
+            <div className="p-2.5 bg-white/20 rounded-2xl shrink-0">
+              <Bell className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1 text-left">
+              <h4 className="text-xs font-black tracking-tight uppercase">{activeNotification.title}</h4>
+              <p className="text-[10px] leading-relaxed opacity-95 font-semibold mt-0.5">{activeNotification.text}</p>
+              <div className="mt-2 flex items-center gap-1.5 text-[8.5px] font-black tracking-wider uppercase bg-white/10 px-2 py-0.5 rounded-full w-max">
+                Appuyer pour venir apprendre 🚀
+              </div>
+            </div>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveNotification(null);
+              }}
+              className="text-white/60 hover:text-white p-1 shrink-0"
+            >
+              <XCircle className="w-4.5 h-4.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showWelcome && (
@@ -520,35 +612,37 @@ export default function App() {
 
       {/* Header */}
       <header 
-        className="sticky top-0 z-20 text-white shadow-md pb-4 rounded-b-2xl transition-colors duration-300"
+        className="sticky top-0 z-20 text-white shadow-lg pb-1 rounded-b-lg transition-all duration-500"
         style={{ backgroundColor: theme.accentColor }}
       >
-        <div className="px-6 pt-12 pb-2 flex items-center justify-between">
-          <div className="flex items-center">
-            <BookOpen className="w-8 h-8 mr-2" />
-            <h1 className="text-2xl font-bold tracking-tight">Ibrahima VocabAnglais</h1>
+        <div className="px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-white/20 rounded-lg">
+              <Zap className="w-4 h-4" />
+            </div>
+            <h1 className="text-sm font-black tracking-tighter uppercase">Ibrahima Vocab</h1>
           </div>
           <button 
             onClick={() => setCurrentTab('profile')}
-            className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-sm hover:bg-white/30 transition-colors"
+            className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded-full backdrop-blur-md hover:bg-white/20 transition-all active:scale-95"
           >
-            <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center text-xs font-black" style={{ color: theme.accentColor }}>
+            <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center text-[10px] font-black" style={{ color: theme.accentColor }}>
               {userName.charAt(0).toUpperCase()}
             </div>
-            <span className="text-sm font-bold truncate max-w-[80px]">{userName}</span>
+            <span className="text-[9px] font-black truncate max-w-[50px] uppercase tracking-tighter">{userName}</span>
           </button>
         </div>
         
         {currentTab === 'dict' && (
-          <div className="px-4 mt-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+          <div className="px-3 pb-3 space-y-2">
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-white transition-colors">
+                <Search className="h-3 w-3 text-white/50" />
               </div>
               <input
                 type="text"
-                className="block w-full pl-10 pr-3 py-3 border-none rounded-xl leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-300 sm:text-sm shadow-inner"
-                placeholder={`Rechercher parmi les ${allWords.length} mots...`}
+                className="block w-full pl-8 pr-3 py-1.5 border-none rounded-lg leading-5 bg-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/30 text-[10px] shadow-inner backdrop-blur-sm transition-all focus:bg-white/20"
+                placeholder={`Rechercher parmi ${allWords.length} mots...`}
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -556,13 +650,29 @@ export default function App() {
                 }}
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => {
-                  // Delaied close to allow clicking suggestions
                   setTimeout(() => setShowSuggestions(false), 200);
                 }}
               />
-              
-              {/* Suggestions Dropdown */}
-              <AnimatePresence>
+            </div>
+
+            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+               {['Tous', 'Verbe', 'Nom', 'Adjectif', 'Adverbe'].map((type) => (
+                 <button
+                   key={type}
+                   onClick={() => setSearchTerm(type === 'Tous' ? '' : type)}
+                   className={`flex-shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all ${
+                     (searchTerm === type || (type === 'Tous' && !['Verbe', 'Nom', 'Adjectif', 'Adverbe'].includes(searchTerm)))
+                       ? 'bg-white text-indigo-600 shadow-sm'
+                       : 'bg-white/10 text-white/60 hover:bg-white/20'
+                   }`}
+                 >
+                   {type}
+                 </button>
+               ))}
+            </div>
+            
+            {/* Suggestions Dropdown */}
+            <AnimatePresence>
                 {showSuggestions && searchSuggestions.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
@@ -590,14 +700,15 @@ export default function App() {
                 )}
               </AnimatePresence>
             </div>
-          </div>
-        )}
-      </header>
+          )}
+        </header>
 
       {/* Main Content */}
       <main className="flex-1 p-4 pb-24 overflow-y-auto">
         {currentTab === 'dict' && (
           <div className="space-y-4">
+            <DailyChallenge theme={theme} allWords={allWords} onStatsUpdate={handleStatsBonus} />
+
             {suggestedCorrection && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -672,7 +783,7 @@ export default function App() {
               ].map((m) => (
                 <button
                   key={m.id}
-                  onClick={() => { setQuizMode(m.id as any); generateQuizQuestion(); }}
+                  onClick={() => { setQuizMode(m.id as any); generateQuizQuestion(m.id as any); }}
                   className={`flex-1 py-3 rounded-2xl text-[10px] uppercase font-black tracking-widest transition-all flex flex-col items-center gap-1 ${
                     quizMode === m.id 
                       ? (theme.mode === 'dark' ? 'bg-gray-700 text-white shadow-xl' : 'bg-white text-indigo-600 shadow-xl border border-gray-100') 
@@ -686,25 +797,26 @@ export default function App() {
               ))}
             </div>
 
-            <div className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white'} p-8 rounded-[3.5rem] shadow-2xl border w-full text-center relative overflow-hidden`}>
+            <div className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white'} p-6 rounded-[2.5rem] shadow-2xl border w-full text-center relative overflow-hidden`}>
               {streak > 0 && (
-                <div className="absolute top-6 left-6 flex items-center gap-2 text-white font-black bg-orange-500 px-4 py-1.5 rounded-full shadow-lg z-10 text-[10px] animate-bounce">
-                  <Flame className="w-4 h-4" />
+                <div className="absolute top-4 left-4 flex items-center gap-2 text-white font-black bg-orange-500 px-3 py-1 rounded-full shadow-lg z-10 text-[9px] animate-bounce">
+                  <Flame className="w-3 h-3" />
                   {streak} SÉRIE
                 </div>
               )}
               
-              <div className="flex justify-end items-center mb-8">
-                <span className={`px-5 py-2 rounded-2xl text-[10px] font-black tracking-widest uppercase border-2 ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700 text-gray-400' : 'bg-indigo-50 border-indigo-100 text-indigo-600'}`}>
-                   SCORE: {score.correct} / {score.total}
+              <div className="flex justify-between items-center mb-6">
+                <div className="text-[9px] font-black uppercase opacity-20 tracking-tighter">Ibrahima Kane Quiz</div>
+                <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black tracking-widest uppercase border-2 ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700 text-gray-400' : 'bg-indigo-50 border-indigo-100 text-indigo-600'}`}>
+                   SCORE: {score.correct}/{score.total}
                 </span>
               </div>
               
-              <div className="mb-10">
-                <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mb-6 opacity-40">
-                  {quizMode === 'true_false' ? "Affirmation Vrai ou Faux" : "Traduisez maintenant"}
+              <div className="mb-8">
+                <h3 className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mb-4 opacity-40">
+                  {quizMode === 'true_false' ? "Affirmation Vrai ou Faux" : "Traduisez cette expression"}
                 </h3>
-                <div className={`text-2xl font-black leading-tight p-10 rounded-[2.5rem] ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-indigo-50 text-indigo-900 shadow-inner border border-indigo-100/50'}`}>
+                <div className={`text-xl font-black leading-snug p-8 rounded-[2rem] ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-indigo-50 text-indigo-900 shadow-inner border border-indigo-100/30'}`}>
                   {quizMode === 'mots' && quizWord?.english}
                   {quizMode === 'phrases' && quizSentence?.english}
                   {quizMode === 'true_false' && quizTF?.statement}
@@ -899,7 +1011,9 @@ export default function App() {
           </div>
         )}
         {currentTab === 'multiplayer' && (
-          <MultiplayerGame userName={userName} theme={theme} />
+          <div className="animate-in fade-in slide-in-from-bottom-5 duration-300">
+             <MultiplayerGame userName={userName} theme={theme} />
+          </div>
         )}
         {currentTab === 'profile' && (
           <div className="max-w-md mx-auto w-full pt-4 animate-in fade-in slide-in-from-bottom-4 duration-300">

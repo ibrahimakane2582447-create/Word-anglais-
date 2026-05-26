@@ -1,19 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Play, LogOut, CheckCircle2, XCircle, Trophy, Crown, Loader2, Copy } from 'lucide-react';
-import { db, auth } from '../firebase';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  onSnapshot, 
-  query, 
-  where, 
-  getDocs, 
-  updateDoc, 
-  serverTimestamp,
-  deleteDoc
-} from 'firebase/firestore';
+import { Users, Play, LogOut, CheckCircle2, XCircle, Trophy, Crown, Loader2, Sword } from 'lucide-react';
 import { sentenceData, SentenceEntry } from '../data';
 import { sounds } from '../lib/sounds';
 
@@ -22,13 +9,10 @@ interface Player {
   name: string;
   score: number;
   questionsAnswered: number;
-  lastUpdate: any;
-  answers?: { [key: number]: { selected: string, correct: boolean } };
+  answers?: { [key: number]: { selected: string, correct: boolean, question: string, correctAnswer: string } };
 }
 
 interface Room {
-  id: string;
-  code: string;
   status: 'waiting' | 'playing' | 'finished';
   totalQuestions: number;
   questions: SentenceEntry[];
@@ -40,40 +24,36 @@ interface Props {
 }
 
 export default function MultiplayerGame({ userName, theme }: Props) {
-  const [room, setRoom] = useState<Room | null>(null);
+  const [roomStatus, setRoomStatus] = useState<'waiting' | 'entering_names' | 'playing' | 'finished'>('waiting');
   const [players, setPlayers] = useState<Player[]>([]);
-  const [joinCode, setJoinCode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [quizOptions, setQuizOptions] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  // Local Mode States
-  const [isLocalMode, setIsLocalMode] = useState(false);
-  const [isEnteringNames, setIsEnteringNames] = useState(false);
-  const [localNames, setLocalNames] = useState({ p1: 'Joueur 1', p2: 'Joueur 2' });
-  const [localTurn, setLocalTurn] = useState(0); // 0 or 1
+  const [localNames, setLocalNames] = useState({ p1: userName || 'Joueur 1', p2: 'Adversaire' });
+  const [localTurn, setLocalTurn] = useState(0); // 0 corresponds to p1, 1 to p2
   const [localFeedback, setLocalFeedback] = useState<string | null>(null);
-  const [localHistory, setLocalHistory] = useState<any[]>([{ score: 0, answers: {} }, { score: 0, answers: {} }]);
   const [localQuestions, setLocalQuestions] = useState<SentenceEntry[]>([]);
+  const [history, setHistory] = useState<any[]>([
+    { score: 0, answers: {} },
+    { score: 0, answers: {} }
+  ]);
 
   useEffect(() => {
-    if ((room && room.status === 'playing') || (isLocalMode && localQuestions.length > 0)) {
+    if (roomStatus === 'playing' && localQuestions.length > 0) {
       generateOptions();
     }
-  }, [room?.status, isLocalMode, currentQuestionIdx, localTurn]);
+  }, [roomStatus, currentQuestionIdx, localTurn, localQuestions]);
 
   const generateOptions = () => {
-    const questions = isLocalMode ? localQuestions : room?.questions;
-    if (!questions || !questions[currentQuestionIdx]) return;
+    const current = localQuestions[currentQuestionIdx];
+    if (!current) return;
     
-    const current = questions[currentQuestionIdx];
     const options = new Set<string>();
     options.add(current.french);
     
     while(options.size < 4) {
-      const random = sentenceData[Math.floor(Math.random() * sentenceData.length)].french;
+      const idx = Math.floor(Math.random() * sentenceData.length);
+      const random = sentenceData[idx].french;
       if (random !== current.french) options.add(random);
     }
     
@@ -81,292 +61,107 @@ export default function MultiplayerGame({ userName, theme }: Props) {
     setSelectedAnswer(null);
   };
 
-  const startLocalMode = () => {
-    setIsEnteringNames(true);
-    setError(null);
+  const startPreparation = () => {
+    setRoomStatus('entering_names');
   };
 
   const confirmLocalNames = () => {
-    setIsEnteringNames(false);
-    setIsLocalMode(true);
     const selectedQuestions = [...sentenceData]
       .sort(() => Math.random() - 0.5)
-      .slice(0, 5); // 5 questions each for quick play
+      .slice(0, 5); // 5 questions each for a quick duel
+    
     setLocalQuestions(selectedQuestions);
-    setLocalHistory([{ score: 0, answers: {} }, { score: 0, answers: {} }]);
+    setHistory([{ score: 0, answers: {} }, { score: 0, answers: {} }]);
     setLocalTurn(0);
     setCurrentQuestionIdx(0);
-  };
-
-  const createRoom = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const code = Math.floor(1000 + Math.random() * 9000).toString();
-      const roomId = doc(collection(db, 'rooms')).id;
-      const user = auth.currentUser;
-      if (!user) return;
-      
-      const selectedQuestions = [...sentenceData]
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 5);
-
-      const roomData = {
-        code,
-        status: 'waiting',
-        createdAt: serverTimestamp(),
-        totalQuestions: 5,
-        questions: selectedQuestions
-      };
-
-      // Optimistic Update
-      sounds.playCreate();
-      setRoom({ id: roomId, ...roomData } as any);
-      setIsLoading(false); // Immediate visual feedback
-      
-      // Perform Firestore writes in background
-      const batchWrites = async () => {
-        await setDoc(doc(db, 'rooms', roomId), roomData);
-        await setDoc(doc(db, 'rooms', roomId, 'players', user.uid), {
-          name: userName,
-          score: 0,
-          questionsAnswered: 0,
-          answers: {},
-          lastUpdate: serverTimestamp()
-        });
-      };
-      batchWrites();
-      
-      // Setup listeners
-      onSnapshot(doc(db, 'rooms', roomId), (docSnap) => {
-        if (docSnap.exists()) {
-          setRoom({ id: docSnap.id, ...docSnap.data() } as Room);
-        }
-      });
-
-      onSnapshot(collection(db, 'rooms', roomId, 'players'), (snapshot) => {
-        const pList = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Player));
-        setPlayers(pList.sort((a, b) => b.score - a.score));
-      });
-    } catch (err: any) {
-      setError("Erreur.");
-      console.error(err);
-      setIsLoading(false);
-    }
-  };
-
-  const joinRoomByCode = async () => {
-    if (joinCode.length !== 4) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const q = query(collection(db, 'rooms'), where('code', '==', joinCode), where('status', '==', 'waiting'));
-      const snapshot = await getDocs(q);
-      if (snapshot.empty) {
-        setError("Salle introuvable.");
-        return;
-      }
-      joinRoomById(snapshot.docs[0].id);
-    } catch (err: any) {
-      setError("Erreur.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const joinRoomById = (roomId: string) => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    onSnapshot(doc(db, 'rooms', roomId), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as Room;
-        setRoom({ id: docSnap.id, ...data } as Room);
-      }
-    });
-
-    onSnapshot(collection(db, 'rooms', roomId, 'players'), (snapshot) => {
-      const pList = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Player));
-      setPlayers(pList.sort((a, b) => b.score - a.score));
-    });
-
-    setDoc(doc(db, 'rooms', roomId, 'players', user.uid), {
-      name: userName,
-      score: 0,
-      questionsAnswered: 0,
-      answers: {},
-      lastUpdate: serverTimestamp()
-    });
-  };
-
-  const startGame = async () => {
-    if (!room) return;
-    updateDoc(doc(db, 'rooms', room.id), { status: 'playing' });
+    setRoomStatus('playing');
+    sounds.playCreate();
   };
 
   const handleAnswer = (answer: string) => {
     if (selectedAnswer) return;
     setSelectedAnswer(answer);
 
-    if (isLocalMode) {
-      const currentQ = localQuestions[currentQuestionIdx];
-      const isCorrect = answer === currentQ.french;
-      
-      const newHistory = [...localHistory];
-      newHistory[localTurn].score += isCorrect ? 1 : 0;
-      newHistory[localTurn].answers[currentQuestionIdx] = {
-        question: currentQ.english,
-        correct: currentQ.french,
-        selected: answer,
-        isCorrect
-      };
-      setLocalHistory(newHistory);
-      setLocalFeedback(isCorrect ? "CORRECT !" : "ERREUR !");
-      sounds.playCreate();
-
-      setTimeout(() => {
-        setLocalFeedback(null);
-        if (localTurn === 0) {
-          setLocalTurn(1);
-          setSelectedAnswer(null);
-        } else {
-          if (currentQuestionIdx < localQuestions.length - 1) {
-            setLocalTurn(0);
-            setCurrentQuestionIdx(prev => prev + 1);
-            setSelectedAnswer(null);
-          } else {
-            setIsLocalMode(false);
-            const results = [
-              { id: 'p1', name: localNames.p1, score: newHistory[0].score, questionsAnswered: localQuestions.length, lastUpdate: Date.now(), answers: newHistory[0].answers },
-              { id: 'p2', name: localNames.p2, score: newHistory[1].score, questionsAnswered: localQuestions.length, lastUpdate: Date.now(), answers: newHistory[1].answers }
-            ].sort((a, b) => b.score - a.score);
-            setPlayers(results);
-            setRoom({ id: 'local', status: 'finished', code: '0000', totalQuestions: localQuestions.length, questions: localQuestions });
-            sounds.playFinished();
-          }
-        }
-      }, 600);
-      return;
-    }
-
-    if (!room || !auth.currentUser) return;
-    const isCorrect = answer === room.questions[currentQuestionIdx].french;
-    const userRef = doc(db, 'rooms', room.id, 'players', auth.currentUser.uid);
+    const currentQ = localQuestions[currentQuestionIdx];
+    const isCorrect = answer === currentQ.french;
     
-    const me = players.find(p => p.id === auth.currentUser?.uid);
-    const newAnswers = { ...(me?.answers || {}), [currentQuestionIdx]: { selected: answer, correct: isCorrect } };
-
-    // Async update
-    updateDoc(userRef, {
-      score: (me?.score || 0) + (isCorrect ? 1 : 0),
-      questionsAnswered: currentQuestionIdx + 1,
-      answers: newAnswers,
-      lastUpdate: serverTimestamp()
-    });
-
+    const newHistory = [...history];
+    newHistory[localTurn].score += isCorrect ? 1 : 0;
+    newHistory[localTurn].answers[currentQuestionIdx] = {
+      question: currentQ.english,
+      correctAnswer: currentQ.french,
+      selected: answer,
+      isCorrect
+    };
+    
+    setHistory(newHistory);
+    setLocalFeedback("Réponse enregistrée !");
+    
     sounds.playCreate();
 
     setTimeout(() => {
-      if (currentQuestionIdx < room.totalQuestions - 1) {
-        setCurrentQuestionIdx(prev => prev + 1);
+      setLocalFeedback(null);
+      if (localTurn === 0) {
+        setLocalTurn(1);
         setSelectedAnswer(null);
+      } else {
+        if (currentQuestionIdx < localQuestions.length - 1) {
+          setLocalTurn(0);
+          setCurrentQuestionIdx(prev => prev + 1);
+          setSelectedAnswer(null);
+        } else {
+          // Finished
+          const results = [
+            { id: 'p1', name: localNames.p1, score: newHistory[0].score, questionsAnswered: localQuestions.length, answers: newHistory[0].answers },
+            { id: 'p2', name: localNames.p2, score: newHistory[1].score, questionsAnswered: localQuestions.length, answers: newHistory[1].answers }
+          ];
+          setPlayers(results);
+          setRoomStatus('finished');
+          sounds.playFinished();
+        }
       }
-    }, 600);
+    }, 1000);
   };
 
-  useEffect(() => {
-    if (room && room.status === 'playing' && !isLocalMode) {
-      const allFinished = players.every(p => p.questionsAnswered === room.totalQuestions);
-      if (allFinished && players.length > 0) {
-        updateDoc(doc(db, 'rooms', room.id), { status: 'finished' });
-        sounds.playFinished();
-      }
-    }
-  }, [players]);
-
-  const leaveRoom = async () => {
-    if (room && room.id !== 'local' && auth.currentUser) {
-      await deleteDoc(doc(db, 'rooms', room.id, 'players', auth.currentUser.uid));
-    }
-    setRoom(null);
-    setPlayers([]);
-    setJoinCode('');
+  const resetGame = () => {
+    setRoomStatus('waiting');
+    setLocalQuestions([]);
     setCurrentQuestionIdx(0);
-    setIsLocalMode(false);
     setLocalTurn(0);
   };
 
-  if (isLocalMode) {
-    const currentQ = localQuestions[currentQuestionIdx];
+  if (roomStatus === 'waiting') {
     return (
-      <div className="max-w-md mx-auto w-full pt-4 space-y-6">
-        <div className="flex flex-col items-center">
-          <div className="px-6 py-2 bg-indigo-600 rounded-full text-white text-[10px] font-black uppercase tracking-widest shadow-lg mb-4">
-            Tour par Tour
+      <div className="max-w-md mx-auto w-full pt-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
+        <div className="text-center">
+          <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-white shadow-2xl rotate-3">
+            <Sword className="w-12 h-12" />
           </div>
-          <div className="text-2xl font-black mb-1">
-            {localTurn === 0 ? localNames.p1.toUpperCase() : localNames.p2.toUpperCase()}
-          </div>
-          <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">C'est à vous de répondre</p>
-          
-          <AnimatePresence>
-            {localFeedback && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                className={`mt-2 font-black text-xs px-4 py-1 rounded-full ${localFeedback === 'CORRECT !' ? 'text-green-500 bg-green-50' : 'text-red-500 bg-red-50'}`}
-              >
-                {localFeedback}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <h2 className="text-4xl font-black mb-2 tracking-tight">Duel de Vocabulaire</h2>
+          <p className="opacity-50 text-xs font-bold uppercase tracking-widest">Défiez un ami sur le même écran</p>
         </div>
 
-        <div className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white'} p-8 rounded-[3rem] shadow-xl border w-full text-center relative overflow-hidden`}>
-          <div className="absolute top-0 right-0 p-4 opacity-5 font-black text-6xl">Q{currentQuestionIdx + 1}</div>
-          <h3 className="text-indigo-500 text-[10px] font-black uppercase tracking-widest mb-6">Traduisez cette phrase</h3>
-          <div className={`text-2xl font-bold leading-relaxed mb-10 p-8 rounded-3xl ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-indigo-50 text-indigo-900'}`}>
-            {currentQ.english}
-          </div>
+        <div className="space-y-4">
+          <button
+            onClick={startPreparation}
+            className="w-full p-8 bg-indigo-600 text-white rounded-[2.5rem] font-black shadow-xl hover:bg-indigo-700 transition-all active:scale-95 flex flex-col items-center gap-1 group"
+          >
+            <Play className="w-10 h-10 mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-xl">COMMENCER LE DUEL</span>
+            <span className="text-[10px] opacity-70 font-bold uppercase tracking-widest">Mode Local (Tour par tour)</span>
+          </button>
 
-          <div className="grid grid-cols-1 gap-4">
-            {quizOptions.map((opt, i) => {
-              const isSelected = opt === selectedAnswer;
-              const isCorrect = opt === currentQ.french;
-
-              let btnClass = "w-full p-5 rounded-2xl text-left font-bold transition-all border-2 flex justify-between items-center ";
-              if (!selectedAnswer) {
-                btnClass += theme.mode === 'dark' ? 'bg-gray-900 border-gray-700 hover:border-indigo-500' : 'bg-gray-50 border-gray-100 hover:border-indigo-500';
-              } else if (isSelected) {
-                btnClass += isCorrect ? 'bg-green-500 border-green-500 text-white scale-[1.02] shadow-lg' : 'bg-red-500 border-red-500 text-white opacity-80';
-              } else if (isCorrect) {
-                btnClass += 'bg-green-500 border-green-500 text-white scale-[1.02] shadow-lg';
-              } else {
-                btnClass += 'opacity-20 border-transparent';
-              }
-
-              return (
-                <button
-                  key={i}
-                  disabled={!!selectedAnswer}
-                  onClick={() => handleAnswer(opt)}
-                  className={btnClass}
-                >
-                  <span className="text-sm">{opt}</span>
-                  {selectedAnswer && isCorrect && <CheckCircle2 className="w-5 h-5" />}
-                  {isSelected && !isCorrect && <XCircle className="w-5 h-5" />}
-                </button>
-              );
-            })}
+          <div className="p-8 bg-white dark:bg-gray-800 rounded-[2.5rem] border-2 border-dashed border-gray-200 dark:border-gray-700 text-center">
+            <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.3em] leading-relaxed">
+              Le mode en ligne a été retiré pour simplifier votre expérience de jeu direct.
+            </p>
           </div>
         </div>
-        <p className="text-center text-[10px] font-bold opacity-30 uppercase tracking-widest">Le score sera révélé à la fin</p>
       </div>
     );
   }
 
-  if (isEnteringNames) {
+  if (roomStatus === 'entering_names') {
     return (
       <div className="max-w-md mx-auto w-full pt-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
         <div className="text-center">
@@ -374,7 +169,7 @@ export default function MultiplayerGame({ userName, theme }: Props) {
             <Users className="w-10 h-10" />
           </div>
           <h2 className="text-3xl font-black mb-2">Duel Local</h2>
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Identifiez les guerriers</p>
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Entrez les noms des guerriers</p>
         </div>
 
         <div className="space-y-6">
@@ -407,10 +202,10 @@ export default function MultiplayerGame({ userName, theme }: Props) {
               C'EST PARTI !
             </button>
             <button
-              onClick={() => setIsEnteringNames(false)}
-              className="w-full p-5 bg-gray-100 dark:bg-gray-800 rounded-[2rem] font-black text-[10px] tracking-widest uppercase opacity-60"
+              onClick={() => setRoomStatus('waiting')}
+              className="w-full p-5 bg-gray-100 dark:bg-gray-800 rounded-[2rem] font-black text-[10px] tracking-widest uppercase opacity-60 flex items-center justify-center gap-2"
             >
-              Retour
+              <LogOut className="w-4 h-4" /> ANNULER
             </button>
           </div>
         </div>
@@ -418,192 +213,60 @@ export default function MultiplayerGame({ userName, theme }: Props) {
     );
   }
 
-  if (!room) {
+  if (roomStatus === 'playing') {
+    const currentQ = localQuestions[currentQuestionIdx];
+    if (!currentQ) return <div className="flex justify-center p-20"><Loader2 className="animate-spin" /></div>;
+
+    const currentPlayerName = localTurn === 0 ? localNames.p1 : localNames.p2;
+
     return (
-      <div className="max-w-md mx-auto w-full pt-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
-        <div className="text-center">
-          <div className="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-white shadow-2xl rotate-3">
-            <Users className="w-12 h-12" />
+      <div className="max-w-md mx-auto w-full pt-4 space-y-6">
+        <div className="flex flex-col items-center">
+          <div className="px-6 py-2 bg-indigo-600 rounded-full text-white text-[10px] font-black uppercase tracking-widest shadow-lg mb-4">
+            TOURS ALTERNÉS
           </div>
-          <h2 className="text-4xl font-black mb-2 tracking-tight">Espace Défis</h2>
-          <p className="opacity-50 text-xs font-bold uppercase tracking-widest">En ligne ou en duel local</p>
-        </div>
-
-        <div className="space-y-4">
-          <button
-            onClick={startLocalMode}
-            className="w-full p-8 bg-white dark:bg-gray-800 border-[3px] border-indigo-600 text-indigo-600 dark:text-indigo-400 rounded-[2.5rem] font-black shadow-xl hover:bg-indigo-50 dark:hover:bg-gray-700 transition-all active:scale-95 flex flex-col items-center gap-1"
+          <motion.div 
+            key={localTurn}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-2xl font-black mb-1 text-center"
           >
-            <Play className="w-8 h-8 mb-2" />
-            <span>DUEL LOCAL</span>
-            <span className="text-[10px] opacity-60 font-bold uppercase tracking-widest">Sur le même téléphone</span>
-          </button>
-
-          <div className="relative flex items-center py-4">
-            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
-            <span className="px-6 text-[10px] font-black uppercase tracking-[0.4em] opacity-20">RÉSEAU</span>
-            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
-          </div>
-
-          <button
-            onClick={createRoom}
-            disabled={isLoading}
-            className="w-full p-6 bg-indigo-600 text-white rounded-[2rem] font-black shadow-lg hover:shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center gap-3"
-          >
-            {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Users className="w-6 h-6" />}
-            CRÉER UNE SALLE
-          </button>
-
-          <div className="p-8 bg-gray-50 dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 space-y-4 shadow-inner">
-             <h4 className="text-center text-[10px] font-black uppercase tracking-widest opacity-40">Rejoindre un ami</h4>
-              <input
-                type="text"
-                maxLength={4}
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="0 0 0 0"
-                className={`w-full p-6 rounded-3xl border-2 text-center text-4xl font-black tracking-[0.2em] focus:outline-none transition-all ${
-                  theme.mode === 'dark' ? 'bg-gray-800 border-gray-700 focus:border-indigo-500' : 'bg-white border-gray-200 focus:border-indigo-500'
-                }`}
-              />
-            <button
-              onClick={joinRoomByCode}
-              disabled={isLoading || joinCode.length !== 4}
-              className="w-full p-5 bg-gray-900 text-white dark:bg-indigo-600 rounded-2xl font-black uppercase tracking-widest text-xs transition-all active:scale-95 disabled:opacity-50"
-            >
-              ENTRER DANS LA SALLE
-            </button>
-          </div>
-          {error && <p className="text-center text-red-500 text-[10px] font-black uppercase">{error}</p>}
-        </div>
-      </div>
-    );
-  }
-
-  if (room.status === 'waiting') {
-    const inviteLink = `${window.location.origin}${window.location.pathname}?room=${room.id}`;
-    return (
-      <div className="max-w-md mx-auto w-full pt-8 space-y-8">
-        <div className="text-center p-10 bg-indigo-600 text-white rounded-[3rem] shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full -translate-x-16 -translate-y-16" />
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70 mb-4">Code d'accès</p>
-          <div className="flex items-center justify-center gap-6 mb-6">
-             <h2 className="text-7xl font-black tracking-widest">{room.code}</h2>
-             <button 
-                onClick={() => {
-                  navigator.clipboard.writeText(room.code);
-                  alert("Code copié !");
-                }}
-                className="p-3 bg-white/20 rounded-2xl hover:bg-white/30 transition-colors"
-             >
-                <Copy className="w-6 h-6" />
-             </button>
-          </div>
-          <button 
-            onClick={() => {
-              navigator.clipboard.writeText(inviteLink);
-              alert("Lien d'invitation copié !");
-            }}
-            className="w-full py-3 bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all border border-white/20"
-          >
-            Copier le lien d'invitation
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex justify-between items-center px-4">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Salons d'attente</h3>
-            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black">{players.length} JOUEUR(S)</span>
-          </div>
-          <div className="grid grid-cols-1 gap-3">
-            {players.map(p => (
-              <div key={p.id} className={`p-5 rounded-[1.5rem] flex items-center justify-between animate-in slide-in-from-left-4 ${theme.mode === 'dark' ? 'bg-gray-800' : 'bg-white shadow-sm border border-gray-100'}`}>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-lg font-black" style={{ backgroundColor: theme.accentColor }}>
-                    {p.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <span className="font-black text-sm block">{p.name} {p.id === auth.currentUser?.uid && "(Vous)"}</span>
-                    <span className="text-[10px] opacity-40 font-bold uppercase tracking-widest">Connecté</span>
-                  </div>
-                </div>
-                <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse" />
-              </div>
-            ))}
-            {players.length < 2 && (
-              <div className="p-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-[2rem] text-center">
-                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 opacity-20" />
-                 <p className="text-[10px] font-bold opacity-30 uppercase tracking-widest">En attente d'un adversaire...</p>
-              </div>
+            {currentPlayerName.toUpperCase()}
+          </motion.div>
+          <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">C'est à votre tour</p>
+          
+          <AnimatePresence>
+            {localFeedback && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                className="mt-2 font-black text-xs px-6 py-2 rounded-full shadow-lg text-white bg-indigo-600"
+              >
+                {localFeedback}
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {players.length >= 2 && (
-            <button onClick={startGame} className="w-full p-6 bg-green-600 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-sm shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all">
-              Lancer le défi
-            </button>
-          )}
-          <button onClick={leaveRoom} className="w-full p-5 bg-gray-200 dark:bg-gray-800 rounded-[2rem] font-black text-[10px] tracking-widest uppercase flex items-center justify-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-            <LogOut className="w-4 h-4" /> ANNULER
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (room.status === 'playing') {
-    const questions = room.id === 'local' ? localQuestions : room.questions;
-    const currentQ = questions[currentQuestionIdx];
-
-    return (
-      <div className="max-w-md mx-auto w-full pt-6 space-y-8 animate-in fade-in duration-500">
-        <div className="flex justify-between items-center px-4">
-          <div className="flex gap-3">
-            {players.map(p => {
-              const isMe = p.id === auth.currentUser?.uid;
-              return (
-                <div key={p.id} className="relative group">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black border-2 transition-all ${isMe ? 'border-indigo-500 bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-110' : 'border-gray-200 bg-gray-50 text-gray-400'}`}>
-                    {p.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-black uppercase opacity-40">
-                    {p.name.split(' ')[0]}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="bg-white dark:bg-gray-800 px-6 py-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-right">
-            <p className="text-[10px] font-black uppercase opacity-30">Question</p>
-            <p className="text-xl font-black">{currentQuestionIdx + 1} <span className="opacity-20">/ {room?.totalQuestions || 5}</span></p>
-          </div>
-        </div>
-
-        <div className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white'} p-8 rounded-[3rem] shadow-2xl border w-full text-center relative`}>
-          <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none">
-             <Users className="w-32 h-32" />
-          </div>
-          <h3 className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.3em] mb-6">Traduisez maintenant</h3>
-          <div className={`text-3xl font-bold leading-tight mb-12 p-8 rounded-[2.5rem] ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-indigo-50 text-indigo-900 shadow-inner'}`}>
+        <div className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white'} p-8 rounded-[3rem] shadow-2xl border w-full text-center relative overflow-hidden`}>
+          <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-4xl">Q{currentQuestionIdx + 1}</div>
+          <h3 className="text-indigo-500 text-[10px] font-black uppercase tracking-widest mb-6 px-10">COMMENT DIT-ON...</h3>
+          <div className={`text-2xl font-bold leading-relaxed mb-10 p-8 rounded-3xl ${theme.mode === 'dark' ? 'bg-gray-900 border-gray-700' : 'bg-indigo-50 text-indigo-900'}`}>
             {currentQ.english}
           </div>
 
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
             {quizOptions.map((opt, i) => {
               const isSelected = opt === selectedAnswer;
-              const isCorrect = opt === currentQ.french;
 
-              let btnClass = "w-full p-6 rounded-[1.5rem] text-left font-black transition-all border-2 flex justify-between items-center ";
+              let btnClass = "w-full p-5 rounded-2xl text-left font-bold transition-all border-2 flex justify-between items-center ";
               if (!selectedAnswer) {
-                btnClass += theme.mode === 'dark' ? 'bg-gray-900 border-gray-700 hover:border-indigo-500' : 'bg-gray-50 border-gray-100 hover:border-indigo-500 shadow-sm';
+                btnClass += theme.mode === 'dark' ? 'bg-gray-900 border-gray-700 hover:border-indigo-500' : 'bg-gray-100/50 border-transparent hover:border-indigo-500';
               } else if (isSelected) {
-                btnClass += isCorrect ? 'bg-green-500 border-green-500 text-white shadow-xl scale-[1.02]' : 'bg-red-500 border-red-500 text-white opacity-80';
-              } else if (isCorrect) {
-                 btnClass += 'bg-green-500 border-green-500 text-white shadow-xl scale-[1.02]';
+                btnClass += 'bg-indigo-500 border-indigo-500 text-white scale-[1.01] shadow-lg';
               } else {
-                btnClass += 'opacity-20 border-transparent';
+                btnClass += 'opacity-40 border-transparent';
               }
 
               return (
@@ -613,128 +276,91 @@ export default function MultiplayerGame({ userName, theme }: Props) {
                   onClick={() => handleAnswer(opt)}
                   className={btnClass}
                 >
-                  <span className="text-base">{opt}</span>
-                  {selectedAnswer && isCorrect && <CheckCircle2 className="w-6 h-6" />}
-                  {isSelected && !isCorrect && <XCircle className="w-6 h-6" />}
+                  <span className="text-sm">{opt}</span>
                 </button>
               );
             })}
           </div>
         </div>
-
-        <div className="px-4">
-           <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 mb-4 ml-1">Progression globale</h4>
-           <div className="flex flex-col gap-3">
-             {players.map(p => (
-               <div key={p.id} className="space-y-1">
-                 <div className="flex justify-between items-end px-1">
-                   <span className="text-[9px] font-black uppercase opacity-40">{p.name}</span>
-                   <span className="text-[9px] font-black opacity-40">{p.questionsAnswered}/{room?.totalQuestions || 5}</span>
-                 </div>
-                 <div className="relative h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden shadow-inner">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(p.questionsAnswered / (room?.totalQuestions || 5)) * 100}%` }}
-                      className="absolute inset-y-0 rounded-full shadow-lg"
-                      style={{ backgroundColor: theme.accentColor }}
-                    />
-                 </div>
-               </div>
-             ))}
-           </div>
-        </div>
+        <p className="text-center text-[10px] font-bold opacity-30 uppercase tracking-widest">Score caché jusqu'à la fin</p>
       </div>
     );
   }
 
-  if (room.status === 'finished') {
-    const isDraw = players.length >= 2 && players[0].score === players[1].score;
-    // Rank players
-    const rankedPlayers = [...players].sort((a,b) => b.score - a.score);
+  if (roomStatus === 'finished') {
+    const p1 = players[0];
+    const p2 = players[1];
+    const isDraw = p1.score === p2.score;
+    const winner = p1.score > p2.score ? p1 : p2;
 
     return (
       <div className="max-w-md mx-auto w-full pt-4 pb-12 space-y-8 animate-in zoom-in duration-500">
         <div className="text-center">
           <div className="inline-flex p-8 rounded-[3rem] bg-indigo-600 text-white shadow-2xl mb-8 relative">
-             <Trophy className="w-20 h-20" />
+             <Trophy className="w-16 h-16" />
              {!isDraw && (
-               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-4 -right-4 bg-yellow-400 p-3 rounded-full ring-8 ring-white dark:ring-gray-900 shadow-xl">
-                  <Crown className="w-8 h-8 text-indigo-900" />
+               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-4 -right-4 bg-yellow-400 p-2 rounded-full ring-4 ring-white shadow-xl">
+                  <Crown className="w-6 h-6 text-indigo-900" />
                </motion.div>
              )}
           </div>
-          <h2 className="text-5xl font-black mb-2 tracking-tighter">{isDraw ? "ÉGALITÉ !" : "RÉSULTATS"}</h2>
-          <p className="text-xs font-black uppercase tracking-[0.4em] opacity-40">Proclamation par mérite</p>
+          <h2 className="text-4xl font-black mb-2 tracking-tighter">{isDraw ? "ÉGALITÉ !" : "VAINQUEUR : " + winner.name.toUpperCase()}</h2>
+          <p className="text-xs font-black uppercase tracking-[0.4em] opacity-40">FIN DU DUEL</p>
         </div>
 
-        <div className="space-y-4">
-          {rankedPlayers.map((p, idx) => (
-            <div 
-              key={p.id} 
-              className={`p-8 rounded-[3rem] border-4 flex flex-col gap-6 transition-all shadow-2xl ${
-                isDraw ? 'border-indigo-500 bg-indigo-50/5' : (idx === 0 ? 'border-green-500 bg-green-50/5 scale-105' : 'border-red-500 bg-red-50/5 opacity-80')
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-5">
-                  <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-white text-3xl font-black shadow-lg ${isDraw ? 'bg-indigo-500' : (idx === 0 ? 'bg-green-500' : 'bg-red-500')}`}>
-                    {idx + 1}
-                  </div>
-                  <div>
-                    <h4 className={`text-2xl font-black leading-none mb-1 ${isDraw ? 'text-indigo-600' : (idx === 0 ? 'text-green-500' : 'text-red-500')}`}>{p.name}</h4>
-                    <div className="flex items-center gap-3">
-                      <p className="text-xs font-black opacity-60 uppercase tracking-widest">
-                         {p.score} ✅ • {room.totalQuestions - p.score} ❌
-                      </p>
-                      <span className={`text-[10px] font-black px-3 py-1 rounded-full border-2 ${isDraw ? 'border-indigo-500 text-indigo-500' : (idx === 0 ? 'border-green-500 text-green-500' : 'border-red-500 text-red-500')}`}>
-                        {idx === 0 ? (isDraw ? 'MATCH NUL' : 'VAINQUEUR') : 'ADVERSAIRE'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-4xl">{idx === 0 ? (isDraw ? '🤝' : '🥇') : (idx === 1 ? '🥈' : '🥉')}</div>
-              </div>
-
-              {/* Individual Question Detail Reveal */}
-              <div className="space-y-2 border-t pt-6 border-gray-100 dark:border-gray-800">
-                <h5 className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3">Analyse des réponses</h5>
-                <div className="grid grid-cols-5 gap-2">
-                   {Array.from({ length: room.totalQuestions }).map((_, i) => {
-                     const ans = p.answers?.[i];
-                     const isCorrect = ans?.isCorrect || ans?.correct;
-                     return (
-                       <div key={i} className={`h-2 rounded-full ${isCorrect ? 'bg-green-500' : (ans ? 'bg-red-500' : 'bg-gray-200')}`} />
-                     );
-                   })}
-                </div>
-                <div className="mt-4 space-y-3 max-h-48 overflow-y-auto pr-2">
-                   {Object.entries(p.answers || {}).map(([key, ans]: any) => {
-                     const isCorrect = ans.isCorrect || ans.correct;
-                     if (isCorrect) return null;
-                     const qIdx = parseInt(key);
-                     const q = room.questions[qIdx];
-                     return (
-                       <div key={key} className="p-4 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-800 text-[10px]">
-                          <p className="font-bold text-red-600 mb-1">FAUX : {q.english}</p>
-                          <div className="flex justify-between gap-4">
-                            <span className="opacity-50">Ta réponse : {ans.selected}</span>
-                            <span className="font-black text-indigo-600">Correct : {q.french}</span>
-                          </div>
-                       </div>
-                     );
-                   })}
-                </div>
-              </div>
+        <div className="grid grid-cols-2 gap-4">
+          {players.map((p, idx) => (
+            <div key={idx} className={`p-6 rounded-[2rem] border-2 bg-white dark:bg-gray-800 text-center ${p.score === winner.score && !isDraw ? 'border-green-500 shadow-lg' : 'border-gray-100 dark:border-gray-700'}`}>
+              <p className="text-[10px] font-black uppercase opacity-40 mb-2">{p.name}</p>
+              <p className="text-4xl font-black" style={{ color: p.score === winner.score && !isDraw ? '#22c55e' : 'inherit' }}>{p.score}</p>
+              <p className="text-[10px] font-bold opacity-30 uppercase">Points</p>
             </div>
           ))}
         </div>
 
+        <div className="p-8 bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 space-y-6">
+          <h3 className="text-center text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Corrections & Résultats Détaillés</h3>
+          <div className="space-y-6">
+            {players.map(p => (
+              <div key={p.id} className="space-y-3">
+                <h4 className="font-extrabold text-xs uppercase tracking-wider text-indigo-500">{p.name} — Résultats :</h4>
+                <div className="space-y-2">
+                  {Object.entries(p.answers || {}).map(([key, ans]: any) => (
+                    <div 
+                      key={`${p.id}-${key}`}
+                      className={`p-4 rounded-2xl border text-[10px] transition-all ${
+                        ans.isCorrect 
+                          ? 'bg-green-50 dark:bg-green-950/10 border-green-100 dark:border-green-900 text-green-800 dark:text-green-300' 
+                          : 'bg-red-50 dark:bg-red-950/10 border-red-100 dark:border-red-900 text-red-800 dark:text-red-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-black text-xs">{ans.question}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${ans.isCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                          {ans.isCorrect ? 'Correct ✓' : 'Incorrect ✗'}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-col gap-1 text-gray-600 dark:text-gray-400">
+                        <div><span className="font-bold opacity-60">Choisi :</span> {ans.selected}</div>
+                        {!ans.isCorrect && (
+                          <div className="text-indigo-600 dark:text-indigo-400 font-extrabold">
+                            <span className="font-bold">Correction :</span> {ans.correctAnswer}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <button 
-          onClick={leaveRoom} 
-          className="w-full p-8 bg-indigo-600 text-white rounded-[2.5rem] font-black shadow-2xl hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.95] transition-all flex flex-col items-center gap-1 uppercase tracking-[0.2em] text-sm"
+          onClick={resetGame} 
+          className="w-full p-8 bg-indigo-600 text-white rounded-[2.5rem] font-black shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all text-sm uppercase tracking-widest"
         >
-          <span>QUITTEZ ET REVENIR</span>
-          <span className="text-[10px] opacity-60">Menu Principal</span>
+          REVENIR AU MENU
         </button>
       </div>
     );
