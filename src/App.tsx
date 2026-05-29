@@ -81,8 +81,8 @@ export default function App() {
   const [dailyNotificationsEnabled, setDailyNotificationsEnabled] = useState(() => {
     return localStorage.getItem('vocab-enable-daily-notifications') !== 'false';
   });
-  const [demoDelayMode, setDemoDelayMode] = useState<'daily' | '5min' | '2min'>(() => {
-    return (localStorage.getItem('vocab-demo-delay') as 'daily' | '5min' | '2min') || '2min';
+  const [demoDelayMode, setDemoDelayMode] = useState<'12h' | '5min' | '2min'>(() => {
+    return (localStorage.getItem('vocab-demo-delay') as '12h' | '5min' | '2min') || '2min';
   });
 
   const requestNotificationPermission = () => {
@@ -136,8 +136,8 @@ export default function App() {
       if (document.visibilityState === 'hidden') {
         // L'utilisateur ferme ou minimise l'application !
         if (dailyNotificationsEnabled && notifPermission === 'granted') {
-          const delayInMs = demoDelayMode === '2min' ? 2 * 60 * 1000 : (demoDelayMode === '5min' ? 5 * 60 * 1000 : 24 * 60 * 60 * 1000);
-          const label = demoDelayMode === '2min' ? "Toutes les 2 minutes (Récurrent)" : (demoDelayMode === '5min' ? "Toutes les 5 minutes (Récurrent)" : "Rappel quotidien (24h)");
+          const delayInMs = demoDelayMode === '2min' ? 2 * 60 * 1000 : (demoDelayMode === '5min' ? 5 * 60 * 1000 : 12 * 60 * 60 * 1000);
+          const label = demoDelayMode === '2min' ? "Toutes les 2 minutes (Récurrent)" : (demoDelayMode === '5min' ? "Toutes les 5 minutes (Récurrent)" : "Rappel toutes les 12h");
           
           navigator.serviceWorker.ready.then(reg => {
             if (reg.active) {
@@ -1257,17 +1257,17 @@ export default function App() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setDemoDelayMode('daily')}
-                            className={`py-2 px-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all text-center ${demoDelayMode === 'daily' ? 'text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
-                            style={{ backgroundColor: demoDelayMode === 'daily' ? theme.accentColor : undefined }}
+                            onClick={() => setDemoDelayMode('12h')}
+                            className={`py-2 px-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all text-center ${demoDelayMode === '12h' ? 'text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                            style={{ backgroundColor: demoDelayMode === '12h' ? theme.accentColor : undefined }}
                           >
-                            Quotidien (24h)
+                            Toutes les 12h ⏳
                           </button>
                         </div>
                         <p className="text-[9px] opacity-60 italic mt-1 leading-normal">
                           {demoDelayMode === '2min' && "⏱️ Mode 2 minutes : Une notification de rappel vous sera envoyée toutes les 2 minutes pour réviser et maintenir votre concentration !"}
                           {demoDelayMode === '5min' && "⏱️ Mode 5 minutes : Une notification de rappel vous sera envoyée toutes les 5 minutes pour réviser et maintenir votre concentration !"}
-                          {demoDelayMode === 'daily' && "📅 Mode réel : Vous serez relancé automatiquement si l'application reste inactive pendant plus de 24 heures."}
+                          {demoDelayMode === '12h' && "📅 Mode réel : Vous serez relancé automatiquement si l'application reste inactive pendant plus de 12 heures."}
                         </p>
                       </div>
                     )}
