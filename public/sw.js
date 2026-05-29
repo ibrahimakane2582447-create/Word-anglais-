@@ -91,8 +91,9 @@ self.addEventListener('message', event => {
       clearTimeout(vocabNotificationTimeout);
     }
     const delay = event.data.delay || 86400000; // Par défaut 24h (en ms)
+    const isRecurring = event.data.recurring || false;
     
-    vocabNotificationTimeout = setTimeout(() => {
+    const showAndReschedule = () => {
       self.registration.showNotification(event.data.title, {
         body: event.data.body,
         icon: '/icon.png',
@@ -104,7 +105,12 @@ self.addEventListener('message', event => {
           url: '/'
         }
       });
-    }, delay);
+      if (isRecurring) {
+        vocabNotificationTimeout = setTimeout(showAndReschedule, delay);
+      }
+    };
+
+    vocabNotificationTimeout = setTimeout(showAndReschedule, delay);
   }
   
   // Annuler la notification planifiée (quand l'utilisateur revient sur l'application)
