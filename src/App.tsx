@@ -657,19 +657,13 @@ export default function App() {
               }}
               className="text-center p-8 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl"
             >
-              <div className="text-6xl mb-4 flex justify-center gap-4">
-                <motion.span
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
-                >
-                  🏫
-                </motion.span>
-                <motion.span
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  📚
-                </motion.span>
+              <div className="mb-4 flex justify-center">
+                <img
+                  src="/icon.png"
+                  alt="English Vocabulary School Logo"
+                  className="w-24 h-24 object-contain rounded-3xl shadow-2xl border border-white/20"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <h2 className="text-4xl font-black mb-2 tracking-tight">English</h2>
               <p className="text-2xl font-bold opacity-90">vocabulary school</p>
@@ -699,8 +693,8 @@ export default function App() {
       >
         <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-white/20 rounded-lg">
-              <Zap className="w-4 h-4" />
+            <div className="p-0.5 bg-white rounded-lg overflow-hidden shrink-0 shadow-sm">
+              <img src="/icon.png" className="w-6 h-6 object-cover rounded" alt="Logo" referrerPolicy="no-referrer" />
             </div>
             <h1 className="text-sm font-black tracking-tighter uppercase">English vocabulary school</h1>
           </div>
