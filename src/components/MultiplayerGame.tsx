@@ -7,6 +7,7 @@ import {
 import { sentenceData, SentenceEntry } from '../data';
 import { sounds } from '../lib/sounds';
 import { db, auth } from '../firebase';
+import { signInAnonymously } from 'firebase/auth';
 import { 
   collection, 
   doc, 
@@ -231,7 +232,11 @@ export default function MultiplayerGame({ userName, theme }: Props) {
 
     try {
       if (!auth.currentUser) {
-        throw new Error("Authentification en cours, réessayez dans un instant.");
+        try {
+          await signInAnonymously(auth);
+        } catch (e) {
+          throw new Error("Impossible de se connecter au serveur de jeu. Vérifiez votre connexion.");
+        }
       }
 
       // 1. Generate random room code
@@ -325,7 +330,11 @@ export default function MultiplayerGame({ userName, theme }: Props) {
 
     try {
       if (!auth.currentUser) {
-        throw new Error("Authentification en cours, réessayez dans un instant.");
+        try {
+          await signInAnonymously(auth);
+        } catch (e) {
+          throw new Error("Impossible de se connecter au serveur de jeu. Vérifiez votre connexion.");
+        }
       }
 
       // 1. Query rooms with given code
