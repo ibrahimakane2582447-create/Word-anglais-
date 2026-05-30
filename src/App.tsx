@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Search, BookOpen, Heart, Gamepad2, List, CheckCircle2, XCircle, Flame, PlusCircle, Save, Settings, Image as ImageIcon, Palette, Sun, Moon, MessageSquare, Send, User, Loader2, Users, Zap, Type, ChevronRight, MessageSquareText } from 'lucide-react';
+import { Bell, Search, BookOpen, Heart, Gamepad2, List, CheckCircle2, XCircle, Flame, PlusCircle, Save, Settings, Image as ImageIcon, Palette, Sun, Moon, MessageSquare, Send, User, Loader2, Users, Zap, Type, ChevronRight, MessageSquareText, Mail } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { vocabularyData, WordEntry, sentenceData, SentenceEntry } from './data';
 import MultiplayerGame from './components/MultiplayerGame';
 import DailyChallenge from './components/DailyChallenge';
 import { sounds } from './lib/sounds';
-
 import { getLevenshteinDistance, findBestMatches } from './lib/searchUtils';
 
 type Tab = 'dict' | 'fav' | 'quiz' | 'add' | 'settings' | 'profile' | 'multiplayer';

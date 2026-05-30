@@ -4,13 +4,8 @@ import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app);
 export const auth = getAuth(app);
-
-// Sign in anonymously to get a UID for security rules
-signInAnonymously(auth).catch((error) => {
-  console.error("Firebase Auth Error:", error);
-});
 
 // Test connection
 import { doc, getDocFromServer } from 'firebase/firestore';

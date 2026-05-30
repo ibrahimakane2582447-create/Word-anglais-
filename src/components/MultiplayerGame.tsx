@@ -7,7 +7,7 @@ import {
 import { sentenceData, SentenceEntry } from '../data';
 import { sounds } from '../lib/sounds';
 import { db, auth } from '../firebase';
-import { signInAnonymously } from 'firebase/auth';
+import { signInAnonymously, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from 'firebase/auth';
 import { 
   collection, 
   doc, 
@@ -76,6 +76,15 @@ type MenuMode = 'selection' | 'local_lobby' | 'local_playing' | 'local_finished'
 export default function MultiplayerGame({ userName, theme }: Props) {
   // Gameplay General Menu Modes
   const [menuMode, setMenuMode] = useState<MenuMode>('selection');
+
+  const [user, setUser] = useState<User | null>(auth.currentUser);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+    return () => unsub();
+  }, []);
 
   // Local Game States
   const [localPlayers, setLocalPlayers] = useState<Player[]>([]);
@@ -537,24 +546,6 @@ export default function MultiplayerGame({ userName, theme }: Props) {
             </div>
             <Sword className="w-8 h-8 opacity-80 group-hover:rotate-12 transition-transform shrink-0 ml-2" />
           </button>
-
-          {/* FIREBASE ONLINE CHALLENGE BUTTON */}
-          <button
-            onClick={() => {
-              setOnlineType(null);
-              setMenuMode('online_lobby');
-            }}
-            className="w-full p-6 text-left bg-gradient-to-r from-indigo-505 from-indigo-600 to-purple-700 text-white rounded-[2rem] font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-between group"
-          >
-            <div className="space-y-1">
-              <span className="text-xs font-black uppercase tracking-wider text-indigo-200 flex items-center gap-1">
-                <Globe className="w-3.5 h-3.5 inline animate-pulse" /> DUEL EN LIGNE (FIREBASE)
-              </span>
-              <h3 className="text-lg font-black tracking-tight">Partie en ligne à distance</h3>
-              <p className="text-[10px] text-indigo-200 font-medium">Générez un code et défiez qui vous voulez !</p>
-            </div>
-            <Globe className="w-8 h-8 opacity-80 group-hover:scale-110 transition-transform shrink-0 ml-2" />
-          </button>
         </div>
       </div>
     );
@@ -731,6 +722,89 @@ export default function MultiplayerGame({ userName, theme }: Props) {
 
   // ONLINE MULTIPLAYER MATCHMAKING / LOBBY
   if (menuMode === 'online_lobby') {
+    if (!user) {
+      return (
+        <div className="max-w-md mx-auto w-full pt-4 space-y-8 animate-in fade-in slide-in-from-bottom-4">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-[2rem] flex items-center justify-center mx-auto mb-4 text-white shadow-2xl rotate-3">
+              <Globe className="w-10 h-10 animate-spin-slow" />
+            </div>
+            <h2 className="text-4xl font-extrabold tracking-tight mb-2">Partie en Ligne</h2>
+            <p className="text-xs font-semibold opacity-60">Créer ou rejoindre un combat de mots à distance</p>
+          </div>
+
+          {errorMsg && (
+            <div className="p-4 bg-red-50 dark:bg-red-950/20 border-2 border-red-100 dark:border-red-900/50 rounded-2xl flex items-start gap-3 text-red-700 dark:text-red-400 text-xs font-bold leading-relaxed">
+              <ShieldAlert className="w-5 h-5 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <div className="p-8 bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl space-y-6 text-center">
+            <div className="space-y-2">
+              <h3 className="font-extrabold text-lg text-indigo-950 dark:text-white">Connexion requise</h3>
+              <p className="text-xs opacity-60 leading-relaxed">
+                Pour créer ou rejoindre un salon de jeu en ligne, veuillez choisir une option de connexion ci-dessous.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={async () => {
+                  setIsLoadingOnline(true);
+                  setErrorMsg(null);
+                  try {
+                    await signInAnonymously(auth);
+                  } catch (e: any) {
+                    console.error("Anonymous authentication is restricted on this Firebase project:", e);
+                    setErrorMsg("L'authentification anonyme est désactivée dans la console de ce projet Firebase. Veuillez utiliser la connexion Google ci-dessous !");
+                  } finally {
+                    setIsLoadingOnline(false);
+                  }
+                }}
+                disabled={isLoadingOnline}
+                className="w-full py-4 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-3 text-sm uppercase tracking-wider"
+              >
+                {isLoadingOnline ? <Loader2 className="w-5 h-5 animate-spin" /> : "Connexion Anonyme"}
+              </button>
+
+              <button
+                onClick={async () => {
+                  setIsLoadingOnline(true);
+                  setErrorMsg(null);
+                  try {
+                    const provider = new GoogleAuthProvider();
+                    await signInWithPopup(auth, provider);
+                    confetti({
+                      particleCount: 50,
+                      spread: 60,
+                      origin: { y: 0.6 }
+                    });
+                  } catch (e: any) {
+                    console.error("Google login failed inside multiplayer lobby:", e);
+                    setErrorMsg("Erreur de connexion Google. Veuillez réessayer.");
+                  } finally {
+                    setIsLoadingOnline(false);
+                  }
+                }}
+                disabled={isLoadingOnline}
+                className="w-full py-4 px-5 bg-red-500 hover:bg-red-600 text-white font-extrabold rounded-[1.25rem] transition-all shadow-md active:scale-95 flex items-center justify-center gap-3 text-sm uppercase tracking-wider"
+              >
+                {isLoadingOnline ? <Loader2 className="w-5 h-5 animate-spin" /> : "Connexion avec Google"}
+              </button>
+            </div>
+
+            <button
+              onClick={() => setMenuMode('selection')}
+              className="w-full text-center text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100 pt-2"
+            >
+              Retour au menu
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="max-w-md mx-auto w-full pt-4 space-y-8 animate-in fade-in slide-in-from-bottom-4">
         <div className="text-center">
