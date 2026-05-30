@@ -28,6 +28,10 @@ export interface UserStats {
 export default function App() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [currentTab, setCurrentTab] = useState<Tab>('dict');
+
+  useEffect(() => {
+    setAddWordError(null);
+  }, [currentTab]);
   
   // --- USER PROFILE & STATS ---
   const [userName, setUserName] = useState(() => localStorage.getItem('vocab-username') || 'Utilisateur');
@@ -267,6 +271,7 @@ export default function App() {
     const saved = localStorage.getItem('vocab-custom-words');
     return saved ? JSON.parse(saved) : [];
   });
+  const [addWordError, setAddWordError] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('vocab-custom-words', JSON.stringify(customWords));
@@ -957,16 +962,32 @@ export default function App() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
+                const englishVal = (formData.get('english') as string || '').trim();
+                const frenchVal = (formData.get('french') as string || '').trim();
+
+                if (!englishVal || !frenchVal) return;
+
+                // Vérifier si le mot existe déjà
+                const alreadyExists = allWords.some(w => 
+                  w.english.trim().toLowerCase() === englishVal.toLowerCase() ||
+                  w.french.trim().toLowerCase() === frenchVal.toLowerCase()
+                );
+
+                if (alreadyExists) {
+                  setAddWordError("Mots déjà ajouter et ajouter un autre");
+                  return;
+                }
+
+                setAddWordError(null);
+
                 const newWord: WordEntry = {
                   id: `custom-${Date.now()}`,
-                  english: formData.get('english') as string,
-                  french: formData.get('french') as string,
+                  english: englishVal,
+                  french: frenchVal,
                   type: formData.get('type') as string,
                   exampleEn: formData.get('exampleEn') as string,
                   exampleFr: formData.get('exampleFr') as string,
                 };
-                
-                if (!newWord.english || !newWord.french) return;
                 
                 setCustomWords(prev => [newWord, ...prev]);
                 e.currentTarget.reset();
@@ -979,6 +1000,12 @@ export default function App() {
               }}
               className={`${theme.mode === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} p-6 rounded-3xl shadow-sm border space-y-5 z-10 relative`}
             >
+              {addWordError && (
+                <div className="p-4 bg-red-50 dark:bg-red-950/20 border-2 border-red-200 dark:border-red-900/50 rounded-2xl text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 animate-in fade-in zoom-in-95">
+                  <span className="text-base">⚠️</span>
+                  <span>{addWordError}</span>
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-sm font-bold opacity-70 ml-1">Anglais</label>
                 <input
