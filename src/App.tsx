@@ -590,7 +590,7 @@ export default function App() {
 
   return (
     <div 
-      className={`min-h-screen font-sans selection:bg-transparent flex flex-col transition-colors duration-300 ${
+      className={`h-[100dvh] overflow-hidden font-sans selection:bg-transparent flex flex-col transition-colors duration-300 ${
         theme.mode === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'
       }`}
       style={{
