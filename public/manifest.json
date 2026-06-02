@@ -1,6 +1,6 @@
 {
-  "name": "English vocabulary school",
-  "short_name": "VocabSchool",
+  "name": "English Vocab School",
+  "short_name": "englishvocabschool",
   "description": "Apprendre l'anglais facilement avec English vocabulary school",
   "start_url": "/",
   "display": "standalone",

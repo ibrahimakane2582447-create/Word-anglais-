@@ -1,5 +1,5 @@
 {
-	"appId": "org.vocabschool.app",
-	"appName": "VocabSchool",
+	"appId": "org.englishvocabschool.app",
+	"appName": "englishvocabschool",
 	"webDir": "dist"
 }
