@@ -28,6 +28,33 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [currentTab, setCurrentTab] = useState<Tab>('dict');
 
+  // PWA Install State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsInstallable(false);
+      }
+      setDeferredPrompt(null);
+    }
+  };
+
   useEffect(() => {
     setAddWordError(null);
   }, [currentTab]);
@@ -1201,6 +1228,24 @@ export default function App() {
                 </div>
                 <div className="text-[10px] uppercase font-black tracking-widest opacity-40">Statut</div>
               </div>
+
+              {/* Install PWA */}
+              {isInstallable && (
+                <div className="space-y-4 border-t border-gray-100 dark:border-gray-700/60 pt-6">
+                  <h3 className="text-sm font-black uppercase tracking-widest opacity-60 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                    <Zap className="w-4 h-4" /> Installer l'application Mobile
+                  </h3>
+                  <p className="text-[10px] opacity-75 leading-relaxed">
+                    Installez cette application directement sur votre écran d'accueil pour une expérience mobile native sans devoir passer par le navigateur !
+                  </p>
+                  <button
+                    onClick={handleInstallClick}
+                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] tracking-widest uppercase rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    INSTALLER L'APPLICATION 📱
+                  </button>
+                </div>
+              )}
 
               {/* Rappels & Notifications Système */}
               <div className="space-y-4 border-t border-gray-100 dark:border-gray-700/60 pt-6">

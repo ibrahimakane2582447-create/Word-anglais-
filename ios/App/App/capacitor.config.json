@@ -1,0 +1,6 @@
+{
+	"appId": "org.vocabschool.app",
+	"appName": "VocabSchool",
+	"webDir": "dist",
+	"packageClassList": []
+}

@@ -1,0 +1,17 @@
+{
+  "name": "English vocabulary school",
+  "short_name": "VocabSchool",
+  "description": "Apprendre l'anglais facilement avec English vocabulary school",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#4f46e5",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
