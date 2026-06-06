@@ -34,6 +34,7 @@ import MultiplayerGame from "./components/MultiplayerGame";
 import DailyChallenge from "./components/DailyChallenge";
 import { EnglishModals } from "./components/EnglishModals";
 import { sounds } from "./lib/sounds";
+import { AdMob, BannerAdSize, BannerAdPosition } from '@capacitor-community/admob';
 import { getLevenshteinDistance, findBestMatches } from "./lib/searchUtils";
 
 type Tab =
@@ -170,6 +171,35 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("vocab-theme", JSON.stringify(theme));
   }, [theme]);
+
+  // --- ADMOB INITIALIZATION ---
+  useEffect(() => {
+    const initAdMob = async () => {
+      try {
+        const isWebView = /wv|Android/i.test(navigator.userAgent) && /AppleWebKit/i.test(navigator.userAgent);
+        if (isWebView && (window as any).capacitor) {
+          await AdMob.initialize({});
+          await AdMob.showBanner({
+            adId: 'ca-app-pub-3940256099942544/6300978111', // Test Banner ID for Android
+            adSize: BannerAdSize.BANNER,
+            position: BannerAdPosition.BOTTOM_CENTER,
+            margin: 0,
+            isTesting: true 
+          });
+        }
+      } catch (e) {
+        console.error("AdMob Error:", e);
+      }
+    };
+    initAdMob();
+    
+    return () => {
+      try {
+        const isWebView = /wv|Android/i.test(navigator.userAgent) && /AppleWebKit/i.test(navigator.userAgent);
+        if (isWebView && (window as any).capacitor) AdMob.removeBanner();
+      } catch (e) {}
+    };
+  }, []);
 
   // --- CHRONOS PHONE NOTIFICATION ORCHESTRATION ---
   const [notifPermission, setNotifPermission] =
