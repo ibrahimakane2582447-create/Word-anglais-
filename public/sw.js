@@ -10,7 +10,6 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
@@ -69,6 +68,10 @@ let vocabNotificationTimeout = null;
 // Écouter les messages du client React pour déclencher et planifier les notifications
 self.addEventListener('message', event => {
   if (!event.data) return;
+
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 
   // Déclencher immédiatement
   if (event.data.type === 'TRIGGER_NOTIFICATION') {

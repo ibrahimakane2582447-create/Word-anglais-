@@ -114,10 +114,34 @@ export default function DailyChallenge({ theme, allWords, onStatsUpdate }: Daily
   };
 
   const speakWord = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
+    const playAudioFallback = () => {
+      const audioUrl = `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=en-US&q=${encodeURIComponent(text)}`;
+      const audio = new Audio(audioUrl);
+      audio.play().catch(err => console.log("Audio fallback failed:", err));
+    };
+
+    const isWebView = /wv|Android/i.test(navigator.userAgent) && /AppleWebKit/i.test(navigator.userAgent);
+
+    if (isWebView) {
+      playAudioFallback();
+    } else {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 1.0;
+        utterance.onerror = () => playAudioFallback();
+        window.speechSynthesis.speak(utterance);
+        
+        setTimeout(() => {
+          if (window.speechSynthesis.pending) {
+            window.speechSynthesis.cancel();
+            playAudioFallback();
+          }
+        }, 500); 
+      } else {
+        playAudioFallback();
+      }
     }
   };
 

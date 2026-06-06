@@ -30,6 +30,26 @@ import_dotenv.default.config();
 var app = (0, import_express.default)();
 var PORT = 3e3;
 app.use(import_express.default.json());
+app.get("/api/audio", async (req, res) => {
+  const text = req.query.text;
+  if (!text) {
+    return res.status(400).send("Text is required");
+  }
+  try {
+    const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Failed to fetch from youdao");
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    res.set("Content-Type", "audio/mpeg");
+    res.set("Cache-Control", "public, max-age=31536000");
+    res.send(Buffer.from(arrayBuffer));
+  } catch (error) {
+    console.error("Audio proxy error:", error);
+    res.status(500).send("Error fetching audio");
+  }
+});
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await (0, import_vite.createServer)({

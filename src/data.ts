@@ -371,24 +371,48 @@ export const sentenceTemplates = [
 ];
 
 export const generateSentences = (count: number): SentenceEntry[] => {
-  // Phrases de haute qualité écrites à la main
-  const curated: SentenceEntry[] = [
-    { id: 'ms1', english: "How are you doing today?", french: "Comment allez-vous aujourd'hui ?" },
-    { id: 'ms2', english: "I would like to order a coffee.", french: "Je voudrais commander un café." },
-    { id: 'ms3', english: "Where is the nearest subway station?", french: "Où se trouve la station de métro la plus proche ?" },
-    { id: 'ms4', english: "The weather is beautiful this morning.", french: "Le temps est magnifique ce matin." },
-    { id: 'ms5', english: "I have been learning English for three months.", french: "J'apprends l'anglais depuis trois mois." },
-    { id: 'ms6', english: "Could you help me with my luggage?", french: "Pourriez-vous m'aider avec mes bagages ?" },
-    { id: 'ms7', english: "I'm looking for a good restaurant near here.", french: "Je cherche un bon restaurant près d'ici." },
-    { id: 'ms8', english: "What time does the train leave?", french: "À quelle heure part le train ?" },
-    { id: 'ms9', english: "It was a pleasure meeting you.", french: "C'était un plaisir de vous rencontrer." },
-    { id: 'ms10', english: "I don't understand what you are saying.", french: "Je ne comprends pas ce que vous dites." },
-    { id: 'ms11', english: "Can you speak more slowly, please?", french: "Pouvez-vous parler plus doucement, s'il vous plaît ?" },
-    { id: 'ms12', english: "What is your favorite color?", french: "Quelle est votre couleur préférée ?" },
-    { id: 'ms13', english: "I need to go to the supermarket.", french: "J'ai besoin d'aller au supermarché." },
-    { id: 'ms14', english: "He is my best friend.", french: "Il est mon meilleur ami." },
-    { id: 'ms15', english: "We are going on vacation next week.", french: "Nous partons en vacances la semaine prochaine." }
-  ];
+    // Phrases de haute qualité écrites à la main (Salutations, Discussions, Vie Quotidienne)
+    const curated: SentenceEntry[] = [
+      { id: 'ms1', english: "How are you doing today?", french: "Comment allez-vous aujourd'hui ?" },
+      { id: 'ms2', english: "I would like to order a coffee.", french: "Je voudrais commander un café." },
+      { id: 'ms3', english: "Where is the nearest subway station?", french: "Où se trouve la station de métro la plus proche ?" },
+      { id: 'ms4', english: "The weather is beautiful this morning.", french: "Le temps est magnifique ce matin." },
+      { id: 'ms5', english: "I have been learning English for three months.", french: "J'apprends l'anglais depuis trois mois." },
+      { id: 'ms6', english: "Could you help me with my luggage?", french: "Pourriez-vous m'aider avec mes bagages ?" },
+      { id: 'ms7', english: "I'm looking for a good restaurant near here.", french: "Je cherche un bon restaurant près d'ici." },
+      { id: 'ms8', english: "What time does the train leave?", french: "À quelle heure part le train ?" },
+      { id: 'ms9', english: "It was a pleasure meeting you.", french: "C'était un plaisir de vous rencontrer." },
+      { id: 'ms10', english: "I don't understand what you are saying.", french: "Je ne comprends pas ce que vous dites." },
+      { id: 'ms11', english: "Can you speak more slowly, please?", french: "Pouvez-vous parler plus doucement, s'il vous plaît ?" },
+      { id: 'ms12', english: "What is your favorite color?", french: "Quelle est votre couleur préférée ?" },
+      { id: 'ms13', english: "I need to go to the supermarket.", french: "J'ai besoin d'aller au supermarché." },
+      { id: 'ms14', english: "He is my best friend.", french: "Il est mon meilleur ami." },
+      { id: 'ms15', english: "We are going on vacation next week.", french: "Nous partons en vacances la semaine prochaine." },
+      
+      // Nouvelles salutations et discussions
+      { id: 'ms16', english: "Hello, nice to meet you.", french: "Bonjour, ravi de vous rencontrer." },
+      { id: 'ms17', english: "Good morning! Did you sleep well?", french: "Bonjour ! As-tu bien dormi ?" },
+      { id: 'ms18', english: "Good evening, how was your day?", french: "Bonsoir, comment s'est passée ta journée ?" },
+      { id: 'ms19', english: "See you later, have a good day!", french: "À plus tard, passe une bonne journée !" },
+      { id: 'ms20', english: "What are you up to this weekend?", french: "Que fais-tu ce week-end ?" },
+      { id: 'ms21', english: "I totally agree with you.", french: "Je suis tout à fait d'accord avec toi." },
+      { id: 'ms22', english: "I'm really sorry, I didn't mean to do that.", french: "Je suis vraiment désolé, je ne voulais pas faire ça." },
+      { id: 'ms23', english: "Excuse me, how much does this cost?", french: "Excusez-moi, combien ça coûte ?" },
+      { id: 'ms24', english: "Can I have the bill, please?", french: "Puis-je avoir l'addition, s'il vous plaît ?" },
+      { id: 'ms25', english: "Do you have any recommendations?", french: "Avez-vous des recommandations ?" },
+      { id: 'ms26', english: "What do you do for a living?", french: "Que fais-tu dans la vie ?" },
+      { id: 'ms27', english: "Take care and keep in touch.", french: "Prends soin de toi et restons en contact." },
+      { id: 'ms28', english: "Let's grab a drink sometime.", french: "Allons boire un verre un de ces jours." },
+      { id: 'ms29', english: "I'm looking forward to it.", french: "J'ai hâte d'y être." },
+      { id: 'ms30', english: "That sounds like a great idea.", french: "Ça me semble être une excellente idée." },
+      
+      // Vie quotidienne
+      { id: 'ms31', english: "I need to do the laundry today.", french: "Je dois faire la lessive aujourd'hui." },
+      { id: 'ms32', english: "Could you pass me the salt?", french: "Pourrais-tu me passer le sel ?" },
+      { id: 'ms33', english: "I'm running a bit late, sorry.", french: "Je suis un peu en retard, désolé." },
+      { id: 'ms34', english: "Did you lock the door?", french: "As-tu verrouillé la porte ?" },
+      { id: 'ms35', english: "I feel very tired after work.", french: "Je me sens très fatigué après le travail." }
+    ];
 
   const generated: SentenceEntry[] = [];
   for (let i = 0; i < count; i++) {
