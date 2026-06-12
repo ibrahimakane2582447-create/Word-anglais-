@@ -27,12 +27,14 @@ import {
   ChevronRight,
   MessageSquareText,
   Mail,
+  AlertCircle,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { vocabularyData, WordEntry, sentenceData, SentenceEntry } from "./data";
 import MultiplayerGame from "./components/MultiplayerGame";
 import DailyChallenge from "./components/DailyChallenge";
 import { EnglishModals } from "./components/EnglishModals";
+import { getConjugations } from "./lib/conjugation";
 import { sounds } from "./lib/sounds";
 import { AdMob, BannerAdSize, BannerAdPosition } from '@capacitor-community/admob';
 import { getLevenshteinDistance, findBestMatches } from "./lib/searchUtils";
@@ -496,6 +498,8 @@ export default function App() {
     const saved = localStorage.getItem("vocab-custom-words");
     return saved ? JSON.parse(saved) : [];
   });
+  const [expandedConjugationId, setExpandedConjugationId] = useState<string | null>(null);
+
   const [addWordError, setAddWordError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -831,14 +835,27 @@ export default function App() {
   };
 
   // --- RENDU DES CARTES DE MOTS ---
-  const renderWordCard = (word: WordEntry) => (
+  const renderWordCard = (word: WordEntry) => {
+    const isVerb = word.type.toLowerCase() === "verbe" || word.type.toLowerCase() === "verb";
+    const isExpanded = isVerb && expandedConjugationId === word.id;
+    let conj = null;
+    if (isExpanded) {
+      conj = getConjugations(word.english);
+    }
+
+    return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       key={word.id}
-      className={`${theme.mode === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"} rounded-[2rem] shadow-sm border overflow-hidden transition-all hover:shadow-md group`}
+      onClick={() => {
+        if (isVerb) {
+          setExpandedConjugationId(isExpanded ? null : word.id);
+        }
+      }}
+      className={`${theme.mode === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"} rounded-[2rem] shadow-sm border overflow-hidden transition-all hover:shadow-md group ${isVerb ? 'cursor-pointer' : ''}`}
     >
       <div className="p-6">
         <div className="flex justify-between items-start mb-4">
@@ -849,6 +866,11 @@ export default function App() {
               >
                 {word.type}
               </span>
+              {isVerb && (
+                <span className="text-[8px] font-bold text-indigo-500 uppercase px-2 py-0.5 border border-indigo-100 dark:border-indigo-900 rounded-full bg-indigo-50 dark:bg-indigo-900/30">
+                  {isExpanded ? 'Masquer Conjugaisons' : 'Voir Conjugaisons'}
+                </span>
+              )}
             </div>
             <h2
               className={`text-2xl font-black flex items-center gap-2 tracking-tight ${theme.mode === "dark" ? "text-gray-100" : "text-gray-900"}`}
@@ -868,7 +890,7 @@ export default function App() {
 
           <div className="flex flex-col gap-2">
             <button
-              onClick={() => toggleFavorite(word.id)}
+              onClick={(e) => { e.stopPropagation(); toggleFavorite(word.id); }}
               className={`p-3 rounded-2xl transition-all active:scale-90 shadow-sm ${
                 favorites.has(word.id)
                   ? "bg-red-50 text-red-500 scale-110"
@@ -883,7 +905,7 @@ export default function App() {
               />
             </button>
             <button
-              onClick={() => speakWord(word.english)}
+              onClick={(e) => { e.stopPropagation(); speakWord(word.english); }}
               className="p-3 rounded-2xl transition-all active:scale-90 shadow-sm group-hover:bg-indigo-600 group-hover:text-white"
               style={{
                 backgroundColor: `${theme.accentColor}10`,
@@ -919,9 +941,77 @@ export default function App() {
             </p>
           </div>
         </div>
+
+        {isExpanded && conj && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4"
+          >
+            <div className="grid grid-cols-2 gap-3 text-xs mb-4">
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                <span className="block text-[9px] uppercase font-black tracking-widest opacity-50 mb-1">Preterite (Past)</span>
+                <span className="font-bold">{conj.past}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                <span className="block text-[9px] uppercase font-black tracking-widest opacity-50 mb-1">Past Participle</span>
+                <span className="font-bold">{conj.pp}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+                <span className="block text-[9px] uppercase font-black tracking-widest opacity-50 mb-1">Present Participle</span>
+                <span className="font-bold">{conj.ing}</span>
+              </div>
+            </div>
+
+            {conj.isStative && (
+              <div className="px-3 py-2 text-[10px] rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/50 mb-4 flex gap-2 items-start">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <p>Verbe d'état : Il est rarement utilisé au temps continu (avec -ing).</p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="text-[10px] uppercase font-black tracking-widest opacity-50">Temps Principaux</div>
+              
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
+                  <span className="opacity-60 font-medium w-1/3">Present Simple</span>
+                  <span className="font-bold flex-1 text-right text-indigo-600 dark:text-indigo-400">I {conj.base} / He {conj.s}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
+                  <span className="opacity-60 font-medium w-1/3">Present Cont.</span>
+                  <span className="font-bold flex-1 text-right text-indigo-600 dark:text-indigo-400">I am {conj.ing}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
+                  <span className="opacity-60 font-medium w-1/3">Past Simple</span>
+                  <span className="font-bold flex-1 text-right text-blue-600 dark:text-blue-400">I {conj.past}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
+                  <span className="opacity-60 font-medium w-1/3">Past Cont.</span>
+                  <span className="font-bold flex-1 text-right text-blue-600 dark:text-blue-400">I was {conj.ing}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
+                  <span className="opacity-60 font-medium w-1/3">Future</span>
+                  <span className="font-bold flex-1 text-right text-purple-600 dark:text-purple-400">I will {conj.base}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
+                  <span className="opacity-60 font-medium w-1/3">Present Perfect</span>
+                  <span className="font-bold flex-1 text-right text-emerald-600 dark:text-emerald-400">I have {conj.pp}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs py-1.5">
+                  <span className="opacity-60 font-medium w-1/3">Past Perfect</span>
+                  <span className="font-bold flex-1 text-right text-emerald-600 dark:text-emerald-400">I had {conj.pp}</span>
+                </div>
+              </div>
+            </div>
+
+          </motion.div>
+        )}
       </div>
     </motion.div>
-  );
+    );
+  };
 
   return (
     <div
