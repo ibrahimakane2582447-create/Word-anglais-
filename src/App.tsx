@@ -34,7 +34,7 @@ import { vocabularyData, WordEntry, sentenceData, SentenceEntry } from "./data";
 import MultiplayerGame from "./components/MultiplayerGame";
 import DailyChallenge from "./components/DailyChallenge";
 import { EnglishModals } from "./components/EnglishModals";
-import { getConjugations } from "./lib/conjugation";
+import { VerbConjugationModal } from "./components/VerbConjugationModal";
 import { sounds } from "./lib/sounds";
 import { AdMob, BannerAdSize, BannerAdPosition } from '@capacitor-community/admob';
 import { getLevenshteinDistance, findBestMatches } from "./lib/searchUtils";
@@ -54,7 +54,11 @@ type PhraseGameType = "translation" | "puzzle";
 export interface ThemeConfig {
   mode: "light" | "dark";
   accentColor: string;
-  backgroundImage: string | null;
+}
+
+export interface UserProfile {
+  name: string;
+  image: string | null;
 }
 
 export interface UserStats {
@@ -127,6 +131,9 @@ export default function App() {
   const [userName, setUserName] = useState(
     () => localStorage.getItem("vocab-username") || "Utilisateur",
   );
+  const [profileImage, setProfileImage] = useState<string | null>(
+    () => localStorage.getItem("vocab-profile-img") || null
+  );
   const [userStats, setUserStats] = useState<UserStats>(() => {
     const saved = localStorage.getItem("vocab-stats");
     return saved
@@ -137,6 +144,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("vocab-username", userName);
   }, [userName]);
+
+  useEffect(() => {
+    if (profileImage) {
+      localStorage.setItem("vocab-profile-img", profileImage);
+    } else {
+      localStorage.removeItem("vocab-profile-img");
+    }
+  }, [profileImage]);
 
   useEffect(() => {
     localStorage.setItem("vocab-stats", JSON.stringify(userStats));
@@ -153,7 +168,6 @@ export default function App() {
       : {
           mode: "light",
           accentColor: "#4f46e5", // indigo-600
-          backgroundImage: null,
         };
   });
 
@@ -425,10 +439,7 @@ export default function App() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setTheme((prev) => ({
-          ...prev,
-          backgroundImage: reader.result as string,
-        }));
+        setProfileImage(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -498,7 +509,7 @@ export default function App() {
     const saved = localStorage.getItem("vocab-custom-words");
     return saved ? JSON.parse(saved) : [];
   });
-  const [expandedConjugationId, setExpandedConjugationId] = useState<string | null>(null);
+  const [selectedVerbDetailed, setSelectedVerbDetailed] = useState<WordEntry | null>(null);
 
   const [addWordError, setAddWordError] = useState<string | null>(null);
 
@@ -837,11 +848,6 @@ export default function App() {
   // --- RENDU DES CARTES DE MOTS ---
   const renderWordCard = (word: WordEntry) => {
     const isVerb = word.type.toLowerCase() === "verbe" || word.type.toLowerCase() === "verb";
-    const isExpanded = isVerb && expandedConjugationId === word.id;
-    let conj = null;
-    if (isExpanded) {
-      conj = getConjugations(word.english);
-    }
 
     return (
     <motion.div
@@ -852,7 +858,7 @@ export default function App() {
       key={word.id}
       onClick={() => {
         if (isVerb) {
-          setExpandedConjugationId(isExpanded ? null : word.id);
+          setSelectedVerbDetailed(word);
         }
       }}
       className={`${theme.mode === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"} rounded-[2rem] shadow-sm border overflow-hidden transition-all hover:shadow-md group ${isVerb ? 'cursor-pointer' : ''}`}
@@ -868,7 +874,7 @@ export default function App() {
               </span>
               {isVerb && (
                 <span className="text-[8px] font-bold text-indigo-500 uppercase px-2 py-0.5 border border-indigo-100 dark:border-indigo-900 rounded-full bg-indigo-50 dark:bg-indigo-900/30">
-                  {isExpanded ? 'Masquer Conjugaisons' : 'Voir Conjugaisons'}
+                  Voir Conjugaisons
                 </span>
               )}
             </div>
@@ -942,72 +948,6 @@ export default function App() {
           </div>
         </div>
 
-        {isExpanded && conj && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4"
-          >
-            <div className="grid grid-cols-2 gap-3 text-xs mb-4">
-              <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
-                <span className="block text-[9px] uppercase font-black tracking-widest opacity-50 mb-1">Preterite (Past)</span>
-                <span className="font-bold">{conj.past}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
-                <span className="block text-[9px] uppercase font-black tracking-widest opacity-50 mb-1">Past Participle</span>
-                <span className="font-bold">{conj.pp}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
-                <span className="block text-[9px] uppercase font-black tracking-widest opacity-50 mb-1">Present Participle</span>
-                <span className="font-bold">{conj.ing}</span>
-              </div>
-            </div>
-
-            {conj.isStative && (
-              <div className="px-3 py-2 text-[10px] rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/50 mb-4 flex gap-2 items-start">
-                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                <p>Verbe d'état : Il est rarement utilisé au temps continu (avec -ing).</p>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <div className="text-[10px] uppercase font-black tracking-widest opacity-50">Temps Principaux</div>
-              
-              <div className="space-y-1">
-                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
-                  <span className="opacity-60 font-medium w-1/3">Present Simple</span>
-                  <span className="font-bold flex-1 text-right text-indigo-600 dark:text-indigo-400">I {conj.base} / He {conj.s}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
-                  <span className="opacity-60 font-medium w-1/3">Present Cont.</span>
-                  <span className="font-bold flex-1 text-right text-indigo-600 dark:text-indigo-400">I am {conj.ing}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
-                  <span className="opacity-60 font-medium w-1/3">Past Simple</span>
-                  <span className="font-bold flex-1 text-right text-blue-600 dark:text-blue-400">I {conj.past}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
-                  <span className="opacity-60 font-medium w-1/3">Past Cont.</span>
-                  <span className="font-bold flex-1 text-right text-blue-600 dark:text-blue-400">I was {conj.ing}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
-                  <span className="opacity-60 font-medium w-1/3">Future</span>
-                  <span className="font-bold flex-1 text-right text-purple-600 dark:text-purple-400">I will {conj.base}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 dark:border-gray-800">
-                  <span className="opacity-60 font-medium w-1/3">Present Perfect</span>
-                  <span className="font-bold flex-1 text-right text-emerald-600 dark:text-emerald-400">I have {conj.pp}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs py-1.5">
-                  <span className="opacity-60 font-medium w-1/3">Past Perfect</span>
-                  <span className="font-bold flex-1 text-right text-emerald-600 dark:text-emerald-400">I had {conj.pp}</span>
-                </div>
-              </div>
-            </div>
-
-          </motion.div>
-        )}
       </div>
     </motion.div>
     );
@@ -1020,22 +960,7 @@ export default function App() {
           ? "bg-gray-900 text-gray-100"
           : "bg-gray-50 text-gray-900"
       }`}
-      style={{
-        backgroundImage: theme.backgroundImage
-          ? `url(${theme.backgroundImage})`
-          : "none",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-      }}
     >
-      {/* Overlay pour la lisibilité si image de fond */}
-      {theme.backgroundImage && (
-        <div
-          className={`fixed inset-0 pointer-events-none ${theme.mode === "dark" ? "bg-black/60" : "bg-white/40"}`}
-        />
-      )}
-
       {/* Real-time Push Notifications Simulator */}
       <AnimatePresence>
         {updateAvailable && (
@@ -1180,10 +1105,14 @@ export default function App() {
             className="flex items-center gap-1.5 bg-white/10 px-2 py-1 rounded-full backdrop-blur-md hover:bg-white/20 transition-all active:scale-95"
           >
             <div
-              className="w-5 h-5 bg-white rounded-full flex items-center justify-center text-[10px] font-black"
-              style={{ color: theme.accentColor }}
+              className={`w-5 h-5 bg-white rounded-full flex items-center justify-center text-[10px] font-black overflow-hidden bg-cover bg-center shrink-0`}
+              style={{
+                color: theme.accentColor,
+                backgroundImage: profileImage ? `url(${profileImage})` : 'none',
+                backgroundColor: profileImage ? 'transparent' : 'white'
+              }}
             >
-              {userName.charAt(0).toUpperCase()}
+              {!profileImage && userName.charAt(0).toUpperCase()}
             </div>
             <span className="text-[9px] font-black truncate max-w-[50px] uppercase tracking-tighter">
               {userName}
@@ -1682,11 +1611,25 @@ export default function App() {
           <div className="max-w-md mx-auto w-full pt-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="flex flex-col items-center mb-8">
               <div
-                className="w-24 h-24 rounded-full flex items-center justify-center text-white text-4xl font-black shadow-xl mb-4 border-4 border-white"
-                style={{ backgroundColor: theme.accentColor }}
+                className="relative w-24 h-24 rounded-full flex items-center justify-center text-white text-4xl font-black shadow-xl mb-4 border-4 border-white cursor-pointer overflow-hidden group bg-cover bg-center"
+                style={{ 
+                  backgroundColor: profileImage ? 'transparent' : theme.accentColor,
+                  backgroundImage: profileImage ? `url(${profileImage})` : 'none'
+                }}
+                onClick={() => document.getElementById("profile-upload")?.click()}
               >
-                {userName.charAt(0).toUpperCase()}
+                {!profileImage && userName.charAt(0).toUpperCase()}
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ImageIcon className="w-6 h-6 text-white" />
+                </div>
               </div>
+              <input
+                id="profile-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
               <div className="text-center">
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2">
                   Profil Utilisateur
@@ -2042,56 +1985,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Image de fond */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4" /> Fond d'écran personnalisé
-                </h3>
-                <div className="space-y-3">
-                  <button
-                    onClick={() =>
-                      document.getElementById("bg-upload")?.click()
-                    }
-                    className={`w-full py-4 border-2 border-dashed rounded-2xl flex items-center justify-center gap-3 transition-all ${theme.backgroundImage ? "border-green-300 bg-green-50/50 text-green-700" : "border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-gray-500"}`}
-                  >
-                    {theme.backgroundImage ? (
-                      <>
-                        {" "}
-                        <ImageIcon className="w-5 h-5" /> Image
-                        sélectionnée{" "}
-                      </>
-                    ) : (
-                      <>
-                        {" "}
-                        <PlusCircle className="w-5 h-5" /> Choisir depuis la
-                        galerie{" "}
-                      </>
-                    )}
-                  </button>
-                  <input
-                    id="bg-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                  {theme.backgroundImage && (
-                    <button
-                      onClick={() =>
-                        setTheme((prev) => ({ ...prev, backgroundImage: null }))
-                      }
-                      className="w-full text-xs font-bold text-red-500 py-2 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      Supprimer le fond d'écran
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <p className="text-[10px] text-center text-gray-400 pt-4 border-t border-gray-100 dark:border-gray-700">
-                L'accès à la galerie est utilisé uniquement pour personnaliser
-                votre fond d'écran localement.
-              </p>
+              {/* Image de fond (removed) */}
             </div>
           </div>
         )}
@@ -2199,9 +2093,14 @@ export default function App() {
             }}
           >
             <div
-              className={`w-5 h-5 mb-0.5 flex-shrink-0 rounded-full border-2 flex items-center justify-center text-[7px] font-black ${currentTab === "profile" ? "border-current" : "border-gray-400"}`}
+              className={`w-5 h-5 mb-0.5 flex-shrink-0 rounded-full border-2 flex items-center justify-center text-[7px] font-black overflow-hidden bg-cover bg-center ${currentTab === "profile" ? "border-current" : "border-gray-400"}`}
+              style={{
+                backgroundImage: profileImage ? `url(${profileImage})` : 'none',
+                backgroundColor: profileImage ? 'transparent' : 'currentcolor',
+                color: profileImage ? 'transparent' : (theme.mode === 'dark' ? '#111827' : 'white')
+              }}
             >
-              {userName.charAt(0).toUpperCase()}
+              {!profileImage && userName.charAt(0).toUpperCase()}
             </div>
             <span className="text-[9px] font-medium truncate w-full text-center">
               Profil
@@ -2223,6 +2122,15 @@ export default function App() {
           </button>
         </div>
       </nav>
+
+      {selectedVerbDetailed && (
+        <VerbConjugationModal
+          verb={selectedVerbDetailed}
+          theme={theme}
+          onClose={() => setSelectedVerbDetailed(null)}
+          speakWord={speakWord}
+        />
+      )}
     </div>
   );
 }

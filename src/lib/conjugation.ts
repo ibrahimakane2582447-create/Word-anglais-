@@ -120,3 +120,114 @@ export function getConjugations(infinitive: string) {
     isStative
   };
 }
+
+export function getFullConjugations(infinitive: string) {
+  const { base, past, pp, ing, s, isStative } = getConjugations(infinitive);
+  
+  const isBe = base === 'be';
+  const isHave = base === 'have';
+
+  const presentSimple = isBe ? [
+    { p: 'I', v: 'am' },
+    { p: 'You', v: 'are' },
+    { p: 'He/She/It', v: 'is' },
+    { p: 'We', v: 'are' },
+    { p: 'You (pl)', v: 'are' },
+    { p: 'They', v: 'are' }
+  ] : [
+    { p: 'I', v: base },
+    { p: 'You', v: base },
+    { p: 'He/She/It', v: s },
+    { p: 'We', v: base },
+    { p: 'You (pl)', v: base },
+    { p: 'They', v: base }
+  ];
+
+  const presentCont = isBe ? [
+    { p: 'I', v: 'am being' },
+    { p: 'You', v: 'are being' },
+    { p: 'He/She/It', v: 'is being' },
+    { p: 'We', v: 'are being' },
+    { p: 'You (pl)', v: 'are being' },
+    { p: 'They', v: 'are being' }
+  ] : [
+    { p: 'I', v: `am ${ing}` },
+    { p: 'You', v: `are ${ing}` },
+    { p: 'He/She/It', v: `is ${ing}` },
+    { p: 'We', v: `are ${ing}` },
+    { p: 'You (pl)', v: `are ${ing}` },
+    { p: 'They', v: `are ${ing}` }
+  ];
+
+  const pastSimple = isBe ? [
+    { p: 'I', v: 'was' },
+    { p: 'You', v: 'were' },
+    { p: 'He/She/It', v: 'was' },
+    { p: 'We', v: 'were' },
+    { p: 'You (pl)', v: 'were' },
+    { p: 'They', v: 'were' }
+  ] : [
+    { p: 'I', v: past },
+    { p: 'You', v: past },
+    { p: 'He/She/It', v: past },
+    { p: 'We', v: past },
+    { p: 'You (pl)', v: past },
+    { p: 'They', v: past }
+  ];
+
+  const pastCont = isBe ? [
+    { p: 'I', v: 'was being' },
+    { p: 'You', v: 'were being' },
+    { p: 'He/She/It', v: 'was being' },
+    { p: 'We', v: 'were being' },
+    { p: 'You (pl)', v: 'were being' },
+    { p: 'They', v: 'were being' }
+  ] : [
+    { p: 'I', v: `was ${ing}` },
+    { p: 'You', v: `were ${ing}` },
+    { p: 'He/She/It', v: `was ${ing}` },
+    { p: 'We', v: `were ${ing}` },
+    { p: 'You (pl)', v: `were ${ing}` },
+    { p: 'They', v: `were ${ing}` }
+  ];
+
+  const future = [
+    { p: 'I', v: `will ${base}` },
+    { p: 'You', v: `will ${base}` },
+    { p: 'He/She/It', v: `will ${base}` },
+    { p: 'We', v: `will ${base}` },
+    { p: 'You (pl)', v: `will ${base}` },
+    { p: 'They', v: `will ${base}` }
+  ];
+
+  const presentPerfect = [
+    { p: 'I', v: `have ${pp}` },
+    { p: 'You', v: `have ${pp}` },
+    { p: 'He/She/It', v: `has ${pp}` },
+    { p: 'We', v: `have ${pp}` },
+    { p: 'You (pl)', v: `have ${pp}` },
+    { p: 'They', v: `have ${pp}` }
+  ];
+
+  const pastPerfect = [
+    { p: 'I', v: `had ${pp}` },
+    { p: 'You', v: `had ${pp}` },
+    { p: 'He/She/It', v: `had ${pp}` },
+    { p: 'We', v: `had ${pp}` },
+    { p: 'You (pl)', v: `had ${pp}` },
+    { p: 'They', v: `had ${pp}` }
+  ];
+
+  return {
+    base, past, pp, ing, s, isStative,
+    tenses: [
+      { name: 'Present Simple', forms: presentSimple, skipForStative: false },
+      { name: 'Present Continuous', forms: presentCont, skipForStative: true },
+      { name: 'Past Simple', forms: pastSimple, skipForStative: false },
+      { name: 'Past Continuous', forms: pastCont, skipForStative: true },
+      { name: 'Future Simple', forms: future, skipForStative: false },
+      { name: 'Present Perfect', forms: presentPerfect, skipForStative: false },
+      { name: 'Past Perfect', forms: pastPerfect, skipForStative: false }
+    ]
+  };
+}
